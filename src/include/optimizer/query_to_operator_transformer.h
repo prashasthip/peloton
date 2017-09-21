@@ -47,6 +47,7 @@ class QueryToOperatorTransformer : public SqlNodeVisitor {
   void Visit(const parser::LimitDescription *) override;
 
   void Visit(const parser::CreateStatement *op) override;
+  void Visit(const parser::CreateFunctionStatement *op) override;
   void Visit(const parser::InsertStatement *op) override;
   void Visit(const parser::DeleteStatement *op) override;
   void Visit(const parser::DropStatement *op) override;
