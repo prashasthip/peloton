@@ -385,6 +385,9 @@ std::string StatementTypeToString(StatementType type) {
     case StatementType::CREATE: {
       return "CREATE";
     }
+    case StatementType::CREATE_FUNC: {
+      return "CREATE_FUNC";
+    }
     case StatementType::DELETE: {
       return "DELETE";
     }
@@ -441,6 +444,8 @@ StatementType StringToStatementType(const std::string& str) {
     return StatementType::DELETE;
   } else if (upper_str == "CREATE") {
     return StatementType::CREATE;
+  } else if (upper_str == "CREATE_FUNC") {
+    return StatementType::CREATE_FUNC;
   } else if (upper_str == "DROP") {
     return StatementType::DROP;
   } else if (upper_str == "PREPARE") {

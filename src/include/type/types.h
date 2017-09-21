@@ -597,6 +597,7 @@ enum class PlanNodeType {
   // Utility
   RESULT = 70,
   COPY = 71,
+  CREATE_FUNC = 72,
 
   // Test
   MOCK = 80
@@ -635,6 +636,15 @@ CreateType StringToCreateType(const std::string &str);
 std::ostream &operator<<(std::ostream &os, const CreateType &type);
 
 //===--------------------------------------------------------------------===//
+// Language Types for UDFs
+//===--------------------------------------------------------------------===//
+
+enum class PLType {
+   PL_PGSQL=0,                // UDF language: Pl_PGSQL
+   PL_C=1                     // UDF language: PL_C
+};
+
+//===--------------------------------------------------------------------===//
 // Statement Types
 //===--------------------------------------------------------------------===//
 
@@ -652,7 +662,8 @@ enum class StatementType {
   ALTER = 12,                 // alter statement type
   TRANSACTION = 13,           // transaction statement type,
   COPY = 14,                  // copy type
-  ANALYZE = 15                // analyze type
+  ANALYZE = 15,               // analyze type
+  CREATE_FUNC = 16            // create func statement type
 };
 std::string StatementTypeToString(StatementType type);
 StatementType StringToStatementType(const std::string &str);
