@@ -2,9 +2,9 @@
 //
 //                         Peloton
 //
-// create_function_plan.h
+// create_function_statement.h
 //
-// Identification: src/include/planner/create_function_plan.h
+// Identification: src/include/parser/create_function_statement.h
 //
 // Copyright (c) 2015-16, Carnegie Mellon University Database Group
 //
@@ -12,75 +12,119 @@
 
 #pragma once
 
-#include "planner/abstract_plan.h"
-#include "parser/create_function_statement.h"
- 
+#include "common/sql_node_visitor.h"
+#include "expression/abstract_expression.h"
+#include "parser/sql_statement.h"
+#include "type/types.h"
+
 namespace peloton {
-
 namespace parser {
-class CreateFunctionStatement;
-}
 
-namespace planner {
-class CreateFunctionPlan : public AbstractPlan {
-  public:
-  CreateFunctionPlan() = delete;
+struct Parameter {
+  enum class FuncParamMode {
+    FUNC_PARAM_IN = 'i',       /* input only */
+    FUNC_PARAM_OUT = 'o',      /* output only */
+    FUNC_PARAM_INOUT = 'b',    /* both */
+    FUNC_PARAM_VARIADIC = 'v', /* variadic (always input) */
+    FUNC_PARAM_TABLE = 't'
+  };
 
-  // Temporary fix to handle Copy()
-  explicit CreateFunctionPlan(std::string func);
+  enum class DataType {
+    INT,
+    INTEGER,
+    TINYINT,
+    SMALLINT,
+    BIGINT,
+    CHAR,
+    DOUBLE,
+    FLOAT,
+    DECIMAL,
+    VARCHAR,
+    TEXT,
+    BOOL,
+    BOOLEAN
+  };
 
-  explicit CreateFunctionPlan(parser::CreateFunctionStatement *parse_tree);
+  Parameter(DataType type) : type(type){};
 
-  inline PlanNodeType GetPlanNodeType() const { return PlanNodeType::CREATE_FUNC; }
+  virtual ~Parameter() {}
 
-  const std::string GetInfo() const { return "Get Create Function Plan"; }
+  DataType type;
+  FuncParamMode mode;
 
-  std::unique_ptr<AbstractPlan> Copy() const {
-    return std::unique_ptr<AbstractPlan>(new CreateFunctionPlan("UDF function"));
+  static type::TypeId GetValueType(DataType type) {
+    switch (type) {
+      case DataType::INT:
+      case DataType::INTEGER:
+        return type::TypeId::INTEGER;
+      case DataType::TINYINT:
+        return type::TypeId::TINYINT;
+      case DataType::SMALLINT:
+        return type::TypeId::SMALLINT;
+      case DataType::BIGINT:
+        return type::TypeId::BIGINT;
+
+      case DataType::DECIMAL:
+      case DataType::DOUBLE:
+      case DataType::FLOAT:
+        return type::TypeId::DECIMAL;
+
+      case DataType::CHAR:
+      case DataType::TEXT:
+      case DataType::VARCHAR:
+        return type::TypeId::VARCHAR;
+
+      case DataType::BOOL:
+      case DataType::BOOLEAN:
+        return type::TypeId::BOOLEAN;
+      default:
+        return type::TypeId::INVALID;
+    }
+  }
+};
+
+struct ReturnType : Parameter {
+  ReturnType(DataType type) : Parameter(type){};
+  virtual ~ReturnType() {}
+};
+
+struct FuncParameter : Parameter {
+  std::string name;
+  FuncParameter(std::string name, DataType type)
+      : Parameter(type), name(name){};
+  virtual ~FuncParameter() {}
+};
+
+// might want to change it to char* instead of string
+class CreateFunctionStatement : public SQLStatement {
+ public:
+  enum class ASclause { EXECUTABLE = 0, QUERY_STRING = 1 };
+
+  CreateFunctionStatement() : SQLStatement(StatementType::CREATE_FUNC){};
+
+  virtual ~CreateFunctionStatement() {
+    delete return_type;
+    for (auto fp : *func_parameters) delete fp;
+    delete func_parameters;
   }
 
-  inline std::string GetFunctionName() const { return function_name; }
+  virtual void Accept(SqlNodeVisitor* v) const override { v->Visit(this); }
 
-  inline PLType GetUDFLanguage() const { return language; }
-
-  inline std::vector<std::string> GetFunctionBody() const { return function_body; }
-
-  inline std::vector<std::string> GetFunctionParameterNames() const { return function_param_names; }
-
-  inline std::vector<type::TypeId> GetFunctionParameterTypes() const { return function_param_types; }
-
-  inline type::TypeId GetReturnType() const { return return_type; }
-
-  inline bool IsReplace() const { return is_replace; }
- 
-  inline int GetNumParams() const {return param_count;}
-
-  private:
-
-  //Indicates the UDF language type
   PLType language;
-
-  // Function parameters names passed to the UDF
-  std::vector<std::string> function_param_names;
-
-  // Function parameter types passed to the UDF
-  std::vector<type::TypeId> function_param_types;
-
-  // Query string/ function body of the UDF
+  ASclause as_type;
   std::vector<std::string> function_body;
-
-  // Indicates if the function definition needs to be replaced
-  bool is_replace;
-
-  // Function name of the UDF
+  ReturnType* return_type;
+  std::vector<FuncParameter*>* func_parameters;
   std::string function_name;
+  bool replace = false;
 
-  // Return type of the UDF
-  type::TypeId return_type;
-
-  int param_count = 0;
-
+  void set_as_type() {
+    if (function_body.size() > 1)
+      as_type = ASclause::EXECUTABLE;
+    else
+      as_type = ASclause::QUERY_STRING;
+  }
 };
-}
-}
 
+}  // namespace parser
+}  // namespace peloton
