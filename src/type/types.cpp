@@ -471,6 +471,9 @@ std::string StatementTypeToString(StatementType type) {
     case StatementType::CREATE_FUNC: {
       return "CREATE_FUNC";
     }
+    case StatementType::CREATE_FUNC: {
+      return "CREATE_FUNC";
+    }
     case StatementType::DELETE: {
       return "DELETE";
     }
