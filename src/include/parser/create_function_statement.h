@@ -35,6 +35,10 @@ struct Parameter {
     TINYINT,
     SMALLINT,
     BIGINT,
+    CHAR,
+    DOUBLE,
+    FLOAT,
+    DECIMAL,
     VARCHAR,
     TEXT,
     BOOL,
@@ -56,27 +60,28 @@ struct Parameter {
       case DataType::INT:
       case DataType::INTEGER:
         return type::TypeId::INTEGER;
-        break;
       case DataType::TINYINT:
         return type::TypeId::TINYINT;
-        break;
       case DataType::SMALLINT:
         return type::TypeId::SMALLINT;
-        break;
       case DataType::BIGINT:
         return type::TypeId::BIGINT;
-        break;
+
+      case DataType::DECIMAL:
+      case DataType::DOUBLE:
+      case DataType::FLOAT:
+        return type::TypeId::DECIMAL;
+
+      case DataType::CHAR:
       case DataType::TEXT:
       case DataType::VARCHAR:
         return type::TypeId::VARCHAR;
-        break;
+
       case DataType::BOOL:
       case DataType::BOOLEAN:
         return type::TypeId::BOOLEAN;
-        break;
       default:
         return type::TypeId::INVALID;
-        break;
     }
   }	
 };
@@ -93,7 +98,8 @@ struct FuncParameter : Parameter {
 };
 
 //might want to change it to char* instead of string
-struct CreateFunctionStatement : public SQLStatement {
+class CreateFunctionStatement : public SQLStatement {
+public:
   enum class ASclause {
     EXECUTABLE=0,
     QUERY_STRING=1	  	
