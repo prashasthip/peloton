@@ -957,27 +957,29 @@ parser::FuncParameter* PostgresParser::FunctionParameterTransform(FunctionParame
   // Transform parameter type
   if ((strcmp(name, "int") == 0) || (strcmp(name, "int4") == 0)) {
     data_type = FuncParameter::DataType::INT;
-  } 
-  //*******See which of the below are needed later***********
-  // I think text/varchar may be used for the pg_catalog
-  else if (strcmp(name, "varchar") == 0) {
-    data_type = FuncParameter::DataType::VARCHAR;
+  } else if (strcmp(name, "varchar") == 0) {
+    data_type = Parameter::DataType::VARCHAR;
   } else if (strcmp(name, "int8") == 0) {
-    data_type = FuncParameter::DataType::BIGINT;
+    data_type = Parameter::DataType::BIGINT;
   } else if (strcmp(name, "int2") == 0) {
-    data_type = FuncParameter::DataType::SMALLINT;
+    data_type = Parameter::DataType::SMALLINT;
+  } else if ((strcmp(name, "double") == 0) || (strcmp(name, "float8") == 0)) {
+    data_type = Parameter::DataType::DOUBLE;
+  } else if ((strcmp(name, "real") == 0) || (strcmp(name, "float4") == 0)) {
+    data_type = Parameter::DataType::FLOAT;
   } else if (strcmp(name, "text") == 0) {
-    data_type = FuncParameter::DataType::TEXT;
+    data_type = Parameter::DataType::TEXT;
+  } else if (strcmp(name, "bpchar") == 0) {
+    data_type = Parameter::DataType::CHAR;
   } else if (strcmp(name, "tinyint") == 0) {
-    data_type = FuncParameter::DataType::TINYINT;
+    data_type = Parameter::DataType::TINYINT;
   } else if(strcmp(name, "bool") == 0) {
-     data_type = FuncParameter::DataType::BOOL;
+     data_type = Parameter::DataType::BOOL;
   } else {
-    LOG_ERROR("Column DataType %s not supported yet...\n", name);
+    LOG_ERROR("Function Parameter DataType %s not supported yet...\n", name);
     throw NotImplementedException("...");
   }
 
-  // Transform Varchar parameter name
   std::string param_name(root->name ? root->name : "");
   result = new FuncParameter(param_name, data_type);
 
@@ -992,30 +994,32 @@ parser::ReturnType* PostgresParser::ReturnTypeTransform(TypeName* root) {
                     ->val.str);
   parser::ReturnType* result = nullptr;
 
-  // Transform parameter type
+  // Transform return type
   if ((strcmp(name, "int") == 0) || (strcmp(name, "int4") == 0)) {
     data_type = FuncParameter::DataType::INT;
-  } 
-  //*******See which of the below are needed later***********
-  // I think text/varchar may be used for the pg_catalog
-  else if (strcmp(name, "varchar") == 0) {
-    data_type = FuncParameter::DataType::VARCHAR;
+  } else if (strcmp(name, "varchar") == 0) {
+    data_type = Parameter::DataType::VARCHAR;
   } else if (strcmp(name, "int8") == 0) {
-    data_type = FuncParameter::DataType::BIGINT;
+    data_type = Parameter::DataType::BIGINT;
   } else if (strcmp(name, "int2") == 0) {
-    data_type = FuncParameter::DataType::SMALLINT;
+    data_type = Parameter::DataType::SMALLINT;
+  } else if ((strcmp(name, "double") == 0) || (strcmp(name, "float8") == 0)) {
+    data_type = Parameter::DataType::DOUBLE;
+  } else if ((strcmp(name, "real") == 0) || (strcmp(name, "float4") == 0)) {
+    data_type = Parameter::DataType::FLOAT;
   } else if (strcmp(name, "text") == 0) {
-    data_type = FuncParameter::DataType::TEXT;
+    data_type = Parameter::DataType::TEXT;
+  } else if (strcmp(name, "bpchar") == 0) {
+    data_type = Parameter::DataType::CHAR;
   } else if (strcmp(name, "tinyint") == 0) {
-    data_type = FuncParameter::DataType::TINYINT;
+    data_type = Parameter::DataType::TINYINT;
   } else if(strcmp(name, "bool") == 0) {
-     data_type = FuncParameter::DataType::BOOL;
+     data_type = Parameter::DataType::BOOL;
   } else {
-    LOG_ERROR("Column DataType %s not supported yet...\n", name);
+    LOG_ERROR("Return Type DataType %s not supported yet...\n", name);
     throw NotImplementedException("...");
   }
 
-  // Transform Varchar parameter name
   result = new ReturnType(data_type);
 
   return result;
@@ -1067,11 +1071,8 @@ parser::SQLStatement* PostgresParser::CreateFunctionTransform(CreateFunctionStmt
 
       for(auto cell2 = list_of_arg->head; cell2 != NULL; cell2 = cell2->next){
         auto query_string = reinterpret_cast<value*>(cell2->data.ptr_value)->val.str;
-        // auto query_string = (reinterpret_cast<value*>(def_elem->arg))->val.str;
-       // LOG_DEBUG("%s\n",query_string);
         std::string new_func_body(query_string);
         result->function_body.push_back(new_func_body);
-
       }
     
       result->set_as_type();
@@ -1459,7 +1460,7 @@ parser::SQLStatement* PostgresParser::NodeTransform(Node* stmt) {
       result = CreateDbTransform(reinterpret_cast<CreatedbStmt*>(stmt));
       break;
     case T_CreateFunctionStmt:
-      result = CreateTransform(reinterpret_cast<CreateStmt*>(stmt));
+      result = CreateFunctionTransform(reinterpret_cast<CreateFunctionStmt*>(stmt));
       break;
     case T_IndexStmt:
       result = CreateIndexTransform(reinterpret_cast<IndexStmt*>(stmt));
@@ -1571,7 +1572,7 @@ parser::SQLStatementList* PostgresParser::ParseSQLString(const char* text) {
   }
 
   // DEBUG only. Comment this out in release mode
-  print_pg_parse_tree(result.tree);
+  //print_pg_parse_tree(result.tree);
   parser::SQLStatementList* transform_result;
   try {
     transform_result = ListTransform(result.tree);
