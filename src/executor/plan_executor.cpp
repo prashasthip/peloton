@@ -287,6 +287,11 @@ executor::AbstractExecutor *BuildExecutorTree(executor::AbstractExecutor *root,
     case PlanNodeType::CREATE:
       child_executor = new executor::CreateExecutor(plan, executor_context);
       break;
+
+    case PlanNodeType::CREATE_FUNC:
+      child_executor = new executor::CreateFunctionExecutor(plan, executor_context);
+      break;
+
     case PlanNodeType::COPY:
       child_executor = new executor::CopyExecutor(plan, executor_context);
       break;
