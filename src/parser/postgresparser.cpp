@@ -1074,7 +1074,6 @@ parser::SQLStatement* PostgresParser::CreateFunctionTransform(CreateFunctionStmt
         std::string new_func_body(query_string);
         result->function_body.push_back(new_func_body);
       }
-    
       result->set_as_type();
     }
     else if(strcmp(def_elem->defname, "language") == 0) {
@@ -1572,7 +1571,7 @@ parser::SQLStatementList* PostgresParser::ParseSQLString(const char* text) {
   }
 
   // DEBUG only. Comment this out in release mode
-  //print_pg_parse_tree(result.tree);
+  // print_pg_parse_tree(result.tree);
   parser::SQLStatementList* transform_result;
   try {
     transform_result = ListTransform(result.tree);

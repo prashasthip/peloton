@@ -289,16 +289,18 @@ executor::AbstractExecutor *BuildExecutorTree(executor::AbstractExecutor *root,
       break;
 
     case PlanNodeType::CREATE_FUNC:
-      child_executor = new executor::CreateExecutor(plan, executor_context);
+      child_executor = new executor::CreateFunctionExecutor(plan, executor_context);
       break;
 
     case PlanNodeType::COPY:
       child_executor = new executor::CopyExecutor(plan, executor_context);
       break;
+
     case PlanNodeType::POPULATE_INDEX:
       child_executor =
           new executor::PopulateIndexExecutor(plan, executor_context);
       break;
+
     default:
       LOG_ERROR("Unsupported plan node type : %s",
                 PlanNodeTypeToString(plan_node_type).c_str());
