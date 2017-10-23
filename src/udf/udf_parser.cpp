@@ -3,6 +3,8 @@
 namespace peloton {
 namespace udf {
 
+using namespace std;
+
 UDFParser::UDFParser(UNUSED_ATTRIBUTE concurrency::Transaction *txn, std::string func_name,
 		std::string func_body,
 		std::vector<std::string> args_name, 
@@ -19,13 +21,13 @@ UDFParser::UDFParser(UNUSED_ATTRIBUTE concurrency::Transaction *txn, std::string
 	BinopPrecedence['*'] = 40; // highest.
 }
 
-Function *UDFParser::Compile() {
+Function* UDFParser::Compile() {
 	std::cout << "Inside compile\n";
 	std::cout << "Function body : " << body_ << "\n";
 	func_body_string = body_;
 	func_body_iterator = func_body_string.begin();
-	if (FunctionAST *F = ParseDefinition()) {
-	    if (Function *LF = F->Codegen()) {
+	if (auto F = ParseDefinition()) {
+	    if (auto *LF = F->codegen()) {
 	      fprintf(stderr, "Read function definition:");
 	      LF->dump();
 	      return LF;
@@ -141,25 +143,25 @@ int UDFParser::getNextToken() {
 	return CurTok = gettok(); 
 }
 
-ExprAST *UDFParser::ParseNumberExpr() {
-  ExprAST *Result = new NumberExprAST(NumVal);
+std::unique_ptr<ExprAST> UDFParser::ParseNumberExpr() {
+  auto Result = llvm::make_unique<NumberExprAST>(NumVal);
   getNextToken(); // consume the number
 
   if(CurTok == tok_semicolon){
   	getNextToken();
   }
-  return Result;
+  return std::move(Result);
 }
 
 /// parenexpr ::= '(' expression ')'
-ExprAST *UDFParser::ParseParenExpr() {
+std::unique_ptr<ExprAST> UDFParser::ParseParenExpr() {
   getNextToken(); // eat (.
-  ExprAST *V = ParseExpression();
+  auto V = ParseExpression();
   if (!V)
     return nullptr;
 
   if (CurTok != ')')
-    return Error("expected ')'");
+    return LogError("expected ')'");
   getNextToken(); // eat ).
 
   if(CurTok == tok_semicolon) {
@@ -172,32 +174,32 @@ ExprAST *UDFParser::ParseParenExpr() {
 /// identifierexpr
 ///   ::= identifier
 ///   ::= identifier '(' expression* ')'
-ExprAST *UDFParser::ParseIdentifierExpr()  {
+std::unique_ptr<ExprAST> UDFParser::ParseIdentifierExpr()  {
   std::string IdName = IdentifierStr;
 
   getNextToken(); // eat identifier.
 
   if (CurTok == tok_semicolon) { // Simple variable ref.
   	getNextToken();
-  	return new VariableExprAST(IdName);
+  	return llvm::make_unique<VariableExprAST>(IdName);
   } 
 
   // Has to be a func Call.
   //if(CurTok == tok_comma || CurTok == ')') {
   if(CurTok != '(') {
-  	return new VariableExprAST(IdName);
+  	return llvm::make_unique<VariableExprAST>(IdName);
   }
 
 
   //Enters in case nextChar is '(' so it is a function call
 
   getNextToken(); // eat (
-  std::vector<ExprAST*> Args;
+  std::vector<unique_ptr<ExprAST>> Args;
   if (CurTok != ')') {
     while (true) {
-      ExprAST *Arg = ParseExpression();
+      auto Arg = ParseExpression();
       if (Arg) {
-        Args.push_back(Arg);
+        Args.push_back(std::move(Arg));
       } else {
       	return nullptr;
       }
@@ -208,7 +210,7 @@ ExprAST *UDFParser::ParseIdentifierExpr()  {
       }
 
       if (CurTok != tok_comma) {
-      	return Error("Expected ')' or ',' in argument list");
+      	return LogError("Expected ')' or ',' in argument list");
       }
       getNextToken();
     }
@@ -221,11 +223,11 @@ ExprAST *UDFParser::ParseIdentifierExpr()  {
   	getNextToken();
   }
 
-  return new CallExprAST(IdName, Args);
+  return llvm::make_unique<CallExprAST>(IdName, std::move(Args));
 }
 
 
-ExprAST *UDFParser::ParseReturn() {
+std::unique_ptr<ExprAST> UDFParser::ParseReturn() {
 	getNextToken(); //eat the return
 	return ParsePrimary();
 }
@@ -234,12 +236,12 @@ ExprAST *UDFParser::ParseReturn() {
 ///   ::= identifierexpr
 ///   ::= numberexpr
 ///   ::= parenexpr
-ExprAST *UDFParser::ParsePrimary() {
+std::unique_ptr<ExprAST> UDFParser::ParsePrimary() {
   std::cout <<"Inside parse PRimary\n";
   switch (CurTok) {
   default:
   	std::cout << "Unknown tok " << CurTok << "\n";
-    return Error("unknown token when expecting an expression");
+    return LogError("unknown token when expecting an expression");
   case tok_identifier:
   	std::cout << "Got a tok_identifier\n";
     return ParseIdentifierExpr();
@@ -259,7 +261,7 @@ ExprAST *UDFParser::ParsePrimary() {
 
 /// binoprhs
 ///   ::= ('+' primary)*
-ExprAST *UDFParser::ParseBinOpRHS(int ExprPrec, ExprAST *LHS) {
+std::unique_ptr<ExprAST> UDFParser::ParseBinOpRHS(int ExprPrec, std::unique_ptr<ExprAST> LHS) {
   // If this is a binop, find its precedence.
   while (true) {
     int TokPrec = GetTokPrecedence();
@@ -275,7 +277,7 @@ ExprAST *UDFParser::ParseBinOpRHS(int ExprPrec, ExprAST *LHS) {
     getNextToken(); // eat binop
 
     // Parse the primary expression after the binary operator.
-    ExprAST *RHS = ParsePrimary();
+    auto RHS = ParsePrimary();
     if (!RHS)
       return nullptr;
 
@@ -283,51 +285,50 @@ ExprAST *UDFParser::ParseBinOpRHS(int ExprPrec, ExprAST *LHS) {
     // the pending operator take RHS as its LHS.
     int NextPrec = GetTokPrecedence();
     if (TokPrec < NextPrec) {
-      RHS = ParseBinOpRHS(TokPrec + 1, RHS);
+      RHS = ParseBinOpRHS(TokPrec + 1, std::move(RHS));
       if (!RHS)
         return nullptr;
     }
 
     // Merge LHS/RHS.
-    LHS = new BinaryExprAST(BinOp, LHS, RHS);
+    LHS = llvm::make_unique<BinaryExprAST>(BinOp, std::move(LHS), std::move(RHS));
   }
 }
 
 /// expression
 ///   ::= primary binoprhs
 ///
-ExprAST *UDFParser::ParseExpression() {
+std::unique_ptr<ExprAST> UDFParser::ParseExpression() {
 	std::cout << "Inside parseExpression\n";
-  ExprAST *LHS = ParsePrimary();
+  auto LHS = ParsePrimary();
   if (!LHS)
     return nullptr;
 
-  return ParseBinOpRHS(0, LHS);
+  return ParseBinOpRHS(0, std::move(LHS));
 }
 
 /// prototype
 ///   ::= id '(' id* ')'
-PrototypeAST *UDFParser::ParsePrototype() {
+std::unique_ptr<PrototypeAST> UDFParser::ParsePrototype() {
   std::cout << "inside PArse prototype\n";
   std::cout << "Successfully parsed fn def\n";
-  return new PrototypeAST(name_, args_name_);
+  return llvm::make_unique<PrototypeAST>(name_, std::move(args_name_));
 }
 
 /// definition ::= 'def' prototype expression
-FunctionAST *UDFParser::ParseDefinition() {
+std::unique_ptr<FunctionAST> UDFParser::ParseDefinition() {
   getNextToken(); // eat begin.
   getNextToken();
   std::cout << CurTok << "Curtok after eating begin\n";
   std::cout << "inside parsedef\n";
-  PrototypeAST *Proto = ParsePrototype();
+  auto Proto = ParsePrototype();
   if (!Proto)
     return nullptr;
 
-  if (ExprAST *E = ParseExpression())
-     return new FunctionAST(Proto, E);
+  if (auto E = ParseExpression())
+     return llvm::make_unique<FunctionAST>(std::move(Proto), std::move(E));
   return nullptr;
 }
-
 
 
 }
