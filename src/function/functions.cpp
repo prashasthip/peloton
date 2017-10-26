@@ -30,5 +30,6 @@ BuiltInFuncType BuiltInFunctions::GetFuncByName(const std::string &func_name) {
   return func->second;
 }
 
+
 }  // namespace function
 }  // namespace peloton

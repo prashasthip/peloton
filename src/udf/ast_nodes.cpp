@@ -1,48 +1,54 @@
 #include "udf/ast_nodes.h"
 #include <iostream> // Remove later , for couts
+#include "type/types.h"
+#include "codegen/type/type.h"
 
 namespace peloton {
 namespace udf {
 
-// Initialize the context and the module
-LLVMContext &Context = getGlobalContext();
-
-// Necessary LLVM modules
-static Module *TheModule = new Module("my cool jit", Context);
-static IRBuilder<> Builder(getGlobalContext());
-static std::map<std::string, Value*> NamedValues;
+// Keeps track of symbols while declaring a function
+static std::map<std::string, llvm::Value *> NamedValues;
 
 // Codegen for NumberExprAST
-Value *NumberExprAST::Codegen() {
+peloton::codegen::Value NumberExprAST::codegen(peloton::codegen::CodeGen &codegen) {
   std::cout << "NumberExprAST codegen\n";
-  return ConstantFP::get(getGlobalContext(), APFloat(Val));
+  auto numberCodegenVal = peloton::codegen::Value(
+          peloton::codegen::type::Type(type::TypeId::DECIMAL, false),
+          codegen.ConstDouble(Val)
+  );
+  return numberCodegenVal;
 }
 
 // Codegen for VariableExprAST
-Value *VariableExprAST::Codegen() {
+peloton::codegen::Value VariableExprAST::codegen(UNUSED_ATTRIBUTE peloton::codegen::CodeGen &codegen) {
   std::cout << "VariabelExprAST codegen\n";
-  Value *V = NamedValues[Name];
-  return V ? V : ErrorV("Unknown variable name");
+  llvm::Value *val = NamedValues[Name];
+  if(val) {
+    return peloton::codegen::Value(
+            peloton::codegen::type::Type(type::TypeId::DECIMAL, false), val);
+  }
+  return LogErrorV("Unknown variable name");
 }
 
 // Codegen for BinaryExprAST
-Value *BinaryExprAST::Codegen() {
+peloton::codegen::Value BinaryExprAST::codegen(peloton::codegen::CodeGen &codegen) {
   std::cout << "Binary ExprAST codegen\n";
 
-  Value *L = LHS->Codegen();
-  Value *R = RHS->Codegen();
-  if (L == 0 || R == 0) return 0;
+  peloton::codegen::Value L = LHS->codegen(codegen);
+  peloton::codegen::Value R = RHS->codegen(codegen);
+  if (L.GetValue() == 0 || R.GetValue() == 0) return peloton::codegen::Value();
   
   switch (Op) {
   case '+': 
-  	return Builder.CreateFAdd(L, R, "addtmp");
-  case '-': 
-  	return Builder.CreateFSub(L, R, "subtmp");
-  case '*': 
-  	return Builder.CreateFMul(L, R, "multmp");
+	return L.Add(codegen, R);
+  case '-':
+    return L.Sub(codegen, R);
+  case '*':
+    return L.Mul(codegen, R);
   case '/':
-  	return Builder.CreateFDiv(L, R, "divtmp");
-  case '>':
+    return L.Div(codegen, R);
+  // TODO(PP): add < and > later on
+  /*case '>':
   	L = Builder.CreateFCmpUGT(L, R, "cmpGT");
   	// Convert bool 0/1 to double 0.0 or 1.0
     return Builder.CreateUIToFP(L, Type::getDoubleTy(getGlobalContext()), "boolGT");
@@ -50,121 +56,124 @@ Value *BinaryExprAST::Codegen() {
     L = Builder.CreateFCmpULT(L, R, "cmptmp");
     // Convert bool 0/1 to double 0.0 or 1.0
     return Builder.CreateUIToFP(L, Type::getDoubleTy(getGlobalContext()),
-                                "boolLT");
-  default: return ErrorV("invalid binary operator");
+                                "boolLT"); */
+  default: return LogErrorV("invalid binary operator");
   }
 }
 
 // Codegen for CallExprAST
-Value *CallExprAST::Codegen() {
+peloton::codegen::Value CallExprAST::codegen(peloton::codegen::CodeGen &codegen) {
   std::cout << "CallExprAST codegen\n";
-  Function *CalleeF = TheModule->getFunction(Callee);
-  if (CalleeF == 0)
-    return ErrorV("Unknown function referenced");
-  
+
+  // Get llvm::function ptr from name
+  auto *CalleeF = codegen.LookupPlpgsqlUDF(Callee);
+  if(CalleeF == 0) {
+    return LogErrorV("Unknown function referenced");
+  }
+
   // If argument mismatch error.
   if (CalleeF->arg_size() != Args.size())
-    return ErrorV("Incorrect # arguments passed");
+    return LogErrorV("Incorrect # arguments passed");
 
-  std::vector<Value*> ArgsV;
+
+  std::vector<llvm::Value *> ArgsV;
   for (unsigned i = 0, e = Args.size(); i != e; ++i) {
-    ArgsV.push_back(Args[i]->Codegen());
-    if (ArgsV.back() == 0) return 0;
+    ArgsV.push_back(Args[i]->codegen(codegen).GetValue());
+    if (ArgsV.back() == 0) {
+      return LogErrorV("Arguments could not be passed in");
+    }
   }
   
-  return Builder.CreateCall(CalleeF, ArgsV, "calltmp");
+  auto *call_ret = codegen.CallFunc(CalleeF, ArgsV);
+
+  auto call_val = peloton::codegen::Value(
+          peloton::codegen::type::Type(type::TypeId::DECIMAL, false),
+          call_ret
+  );
+
+  return call_val;
 }
 
 // Codegen for PrototypeAST
-Function *PrototypeAST::Codegen() {
+peloton::codegen::Value PrototypeAST::codegen(peloton::codegen::CodeGen &codegen) {
   std::cout << "PrototypeAST codegen\n";
-  std::vector<Type*> Doubles(Args.size(),
-                             Type::getDoubleTy(getGlobalContext()));
-  FunctionType *FT = FunctionType::get(Type::getDoubleTy(getGlobalContext()),
-                                       Doubles, false);
+  // TODO(PP) : Later change this to handle any return type and any argument type
+  std::vector<llvm::Type*> arg_types(Args.size(), codegen.DoubleType());
+  auto ret_type = codegen.DoubleType();
+  auto *FT = llvm::FunctionType::get(ret_type, arg_types, false);
   
-  Function *F = Function::Create(FT, Function::ExternalLinkage, Name, TheModule);
-  
-  // If F conflicted, there was already something named 'Name'.  If it has a
-  // body, don't allow redefinition or reextern.
-  if (F->getName() != Name) {
-    // Delete the one we just made and get the existing one.
-    F->eraseFromParent();
-    F = TheModule->getFunction(Name);
-    
-    // If F already has a body, reject this.
-    if (!F->empty()) {
-      ErrorF("redefinition of function");
-      return 0;
-    }
-    
-    // If F took a different number of args, reject.
-    if (F->arg_size() != Args.size()) {
-      ErrorF("redefinition of function with different # args");
-      return 0;
-    }
-  }
-  
+  auto *func_ptr = codegen.RegisterPlpgsqlUDF(Name, FT);
+
   // Set names for all arguments.
   unsigned Idx = 0;
-  for (Function::arg_iterator AI = F->arg_begin(); Idx != Args.size();
-       ++AI, ++Idx) {
-    AI->setName(Args[Idx]);
-    
-    // Add arguments to variable symbol table.
-    NamedValues[Args[Idx]] = AI;
+  for (auto iter = func_ptr->arg_begin(), end = func_ptr->arg_end(); iter != end;
+       iter++) {
+    iter->setName(Args[Idx]);
+    NamedValues[Args[Idx]] = iter;
   }
-  
-  return F;
+
+  auto proto_val = peloton::codegen::Value(
+          peloton::codegen::type::Type(type::TypeId::INVALID, false),
+          func_ptr
+  );
+
+  return proto_val;
 }
 
 // Codegen for FunctionAST
-Function *FunctionAST::Codegen() {
+peloton::codegen::Value FunctionAST::codegen(peloton::codegen::CodeGen &codegen) {
   std::cout << "FunctionAST codegen\n";
   // First, check for an existing function from a previous 'extern' declaration.
   NamedValues.clear();
   
-  Function *TheFunction = Proto->Codegen();
-  if (TheFunction == 0)
-    return 0;
-  
-  // Create a new basic block to start insertion into.
-  BasicBlock *BB = BasicBlock::Create(getGlobalContext(), "entry", TheFunction);
-  Builder.SetInsertPoint(BB);
-  
-  if (Value *RetVal = Body->Codegen()) {
-    // Finish off the function.
-    Builder.CreateRet(RetVal);
+  peloton::codegen::Value proto_val = Proto->codegen(codegen);
+  llvm::Function *func_ptr = reinterpret_cast<llvm::Function *>(proto_val.GetValue());
 
-    // Validate the generated code, checking for consistency.
-    verifyFunction(*TheFunction);
+  if (func_ptr == 0)
+    return LogErrorV("FunctionAST: Unable to codegen proto");
 
-    return TheFunction;
+  auto& code_context_ = codegen.GetCodeContext();
+
+  // Set the entry point of the function
+  llvm::BasicBlock *entry_bb =
+      llvm::BasicBlock::Create(code_context_.GetContext(), "entry", func_ptr);
+  code_context_.GetBuilder().SetInsertPoint(entry_bb);
+
+  peloton::codegen::Value ret = Body->codegen(codegen);
+
+  if(ret.GetValue()) {
+    code_context_.GetBuilder().CreateRet(ret.GetValue());
+
+
+    auto func_ast_val = peloton::codegen::Value(
+            peloton::codegen::type::Type(type::TypeId::INVALID, false),
+            func_ptr
+    );
+
+    return func_ast_val;
   }
-  
-  // Error reading body, remove function.
-  TheFunction->eraseFromParent();
-  return 0;
+
+  return peloton::codegen::Value();
 }
 
 
-ExprAST *Error(const char *Str) { 
+std::unique_ptr<ExprAST> LogError(const char *Str) {
 	fprintf(stderr, "Error: %s\n", Str);
 	return 0;
 }
 
-PrototypeAST *ErrorP(const char *Str) {
-	Error(Str);
+std::unique_ptr<PrototypeAST> LogErrorP(const char *Str) {
+	LogError(Str);
 	return 0;
 }
 FunctionAST *ErrorF(const char *Str) {
-	Error(Str);
+	LogError(Str);
 	return 0;
 }
 
-Value *ErrorV(const char *Str) {
-	Error(Str);
-	return 0;
+peloton::codegen::Value LogErrorV(const char *Str) {
+	LogError(Str);
+	return peloton::codegen::Value();
 }
 
 }
