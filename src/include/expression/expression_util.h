@@ -528,7 +528,8 @@ class ExpressionUtil {
       LOG_INFO("Argument num: %ld", func_data.argument_types_.size());
       func_expr->SetFunctionExpressionParameters(func_data.func_ptr_,
                                                  func_data.return_type_,
-                                                 func_data.argument_types_);
+                                                 func_data.argument_types_,
+                                                 func_data.code_context_);
     } else if (expr->GetExpressionType() ==
                ExpressionType::OPERATOR_CASE_EXPR) {
       auto case_expr = reinterpret_cast<expression::CaseExpression *>(expr);
@@ -778,7 +779,8 @@ class ExpressionUtil {
           catalog->GetFunction(func_expr->func_name_, argtypes);
       func_expr->SetFunctionExpressionParameters(func_data.func_ptr_,
                                                  func_data.return_type_,
-                                                 func_data.argument_types_);
+                                                 func_data.argument_types_,
+                                                 func_data.code_context_);
     }
 
     // Handle case expressions

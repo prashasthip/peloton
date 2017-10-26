@@ -796,6 +796,32 @@ Catalog::~Catalog() {
 // FUNCTION
 //===--------------------------------------------------------------------===//
 
+/*@brief   Add new pl/pgsql UDF
+ * TODO(PP): Check for duplicate names and types to handle multiple inserts
+ * 1. add the function infomation into pg_proc
+ * 2. register the function code context in function::PlpgsqlUDF
+ * @param   name & argument_types   function name and arg types used in SQL
+ * @param   return_type   the return type
+ * @param   prolang       the oid of which language the function is
+ * @param   func_name     the function name in C++ source code (should be unique)
+ * TODO(PP): Check how to uniquely identify a particular function
+ * @param   func_ptr      the pointer to the function
+ */
+void Catalog::AddPlpgsqlUDF(const std::string &name,
+                          const std::vector<type::TypeId> &argument_types,
+                          const type::TypeId return_type,
+                          oid_t prolang,
+                          const std::string &func_name,
+                          codegen::CodeContext *code_context,
+                          concurrency::Transaction *txn) {
+  if (!ProcCatalog::GetInstance()->
+      InsertProc(name, return_type, argument_types,
+                 prolang, func_name, pool_.get(), txn)) {
+    throw CatalogException("Failed to add function " + func_name);
+  }
+  function::PlpgsqlUDF::AddFunction(func_name, code_context);
+}
+
 /*@brief   Add new built-in function
  * 1. add the function infomation into pg_proc
  * 2. register the function pointer in function::BuiltinFunction
@@ -835,11 +861,26 @@ const FunctionData Catalog::GetFunction(
     result.func_name_ = ProcCatalog::GetInstance()->GetProSrc(name, argument_types, txn);
     result.return_type_ = ProcCatalog::GetInstance()->GetProRetType(name, argument_types, txn);
     result.func_ptr_ = function::BuiltInFunctions::GetFuncByName(result.func_name_);
+    result.code_context_ = nullptr;
     if (result.func_ptr_ != nullptr) {
       txn_manager.CommitTransaction(txn);
       return result;
     }
   }
+
+  if (LanguageCatalog::GetInstance()->GetLanguageName(prolang, txn) == "plpgsql") {
+    result.argument_types_ = argument_types;
+    result.func_name_ = ProcCatalog::GetInstance()->GetProSrc(name, argument_types, txn);
+    result.return_type_ = ProcCatalog::GetInstance()->GetProRetType(name, argument_types, txn);
+    result.func_ptr_ = nullptr;
+    result.code_context_ = function::PlpgsqlUDF::GetFuncByName(result.func_name_);
+    if (result.code_context_ != nullptr) {
+      txn_manager.CommitTransaction(txn);
+      return result;
+    }
+  }
+
+
   txn_manager.AbortTransaction(txn);
   throw CatalogException("Failed to find function " + name);
 }
@@ -854,6 +895,12 @@ void Catalog::InitializeLanguages() {
         InsertLanguage("internal", pool_.get(), txn)) {
       txn_manager.AbortTransaction(txn);
       throw CatalogException("Failed to add language 'internal'");
+    }
+    // Add "plpgsql" language
+    if (!LanguageCatalog::GetInstance()->
+        InsertLanguage("plpgsql", pool_.get(), txn)) {
+      txn_manager.AbortTransaction(txn);
+      throw CatalogException("Failed to add language 'plpgsql'");
     }
     txn_manager.CommitTransaction(txn);
     initialized = true;

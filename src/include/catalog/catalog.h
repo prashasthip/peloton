@@ -65,6 +65,8 @@ struct FunctionData {
   type::TypeId return_type_;
   // pointer to the funtion
   function::BuiltInFuncType func_ptr_;
+  // Code context if plpgsql UDF
+  codegen::CodeContext *code_context_;
 };
 
 class Catalog {
@@ -186,6 +188,14 @@ class Catalog {
   void InitializeLanguages();
 
   void InitializeFunctions();
+
+  void AddPlpgsqlUDF(const std::string &name,
+                    const std::vector<type::TypeId> &argument_types,
+                    const type::TypeId return_type,
+                    oid_t prolang,
+                    const std::string &func_name,
+                    codegen::CodeContext *code_context,
+                    concurrency::Transaction *txn);
 
   void AddFunction(const std::string &name,
                    const std::vector<type::TypeId> &argument_types,

@@ -39,10 +39,12 @@ class FunctionExpression : public AbstractExpression {
   FunctionExpression(function::BuiltInFuncType func_ptr,
                      type::TypeId return_type,
                      const std::vector<type::TypeId>& arg_types,
-                     const std::vector<AbstractExpression*>& children)
+                     const std::vector<AbstractExpression*>& children,
+                     codegen::CodeContext *code_context)
       : AbstractExpression(ExpressionType::FUNCTION, return_type),
         func_ptr_(func_ptr),
-        func_arg_types_(arg_types) {
+        func_arg_types_(arg_types),
+        code_context_(code_context) {
     for (auto& child : children) {
       children_.push_back(std::unique_ptr<AbstractExpression>(child));
     }
@@ -52,10 +54,12 @@ class FunctionExpression : public AbstractExpression {
   void SetFunctionExpressionParameters(
       function::BuiltInFuncType func_ptr,
       type::TypeId val_type,
-      const std::vector<type::TypeId>& arg_types) {
+      const std::vector<type::TypeId>& arg_types,
+      codegen::CodeContext *code_context) {
     func_ptr_ = func_ptr;
     return_value_type_ = val_type;
     func_arg_types_ = arg_types;
+    code_context_ = code_context;
     CheckChildrenTypes(children_, func_name_);
   }
 
@@ -64,11 +68,15 @@ class FunctionExpression : public AbstractExpression {
       UNUSED_ATTRIBUTE executor::ExecutorContext* context) const override {
     // for now support only one child
     std::vector<type::Value> child_values;
+
     PL_ASSERT(func_ptr_ != nullptr);
     for (auto& child : children_) {
       child_values.push_back(child->Evaluate(tuple1, tuple2, context));
     }
+    //For Builtins
+
     type::Value ret = func_ptr_(child_values);
+
     // if this is false we should throw an exception
     // TODO: maybe checking this every time is not neccesary? but it prevents
     // crashing
@@ -88,6 +96,8 @@ class FunctionExpression : public AbstractExpression {
 
   std::vector<type::TypeId> func_arg_types_;
 
+  codegen::CodeContext *code_context_;
+
   virtual void Accept(SqlNodeVisitor* v) override { v->Visit(this); }
 
  protected:
@@ -95,7 +105,8 @@ class FunctionExpression : public AbstractExpression {
       : AbstractExpression(other),
         func_name_(other.func_name_),
         func_ptr_(other.func_ptr_),
-        func_arg_types_(other.func_arg_types_) {}
+        func_arg_types_(other.func_arg_types_),
+        code_context_(other.code_context_) {}
 
  private:
 

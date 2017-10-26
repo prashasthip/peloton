@@ -1561,6 +1561,7 @@ parser::UpdateStatement* PostgresParser::UpdateTransform(
 parser::SQLStatementList* PostgresParser::ParseSQLString(const char* text) {
   auto ctx = pg_query_parse_init();
   auto result = pg_query_parse(text);
+
   if (result.error) {
     // Parse Error
     std::string exception_msg = StringUtil::Format(

@@ -19,6 +19,8 @@
 #include "type/types.h"
 #include <iostream>
 #include "udf/udf_handler.h"
+#include "catalog/catalog.h"
+#include "catalog/language_catalog.h"
 
 namespace peloton {
 namespace executor {
@@ -46,7 +48,7 @@ bool CreateFunctionExecutor::DExecute() {
   // auto pool = context->GetPool();
   
   auto proname = node.GetFunctionName();
-  //auto prolang = static_cast<oid_t>(node.GetUDFLanguage());
+  oid_t prolang = catalog::LanguageCatalog::GetInstance()->GetLanguageOid("plpgsql", current_txn);
   //auto pronargs = node.GetNumParams();
   auto prorettype = node.GetReturnType();
   auto proargtypes = node.GetFunctionParameterTypes();
@@ -58,13 +60,24 @@ bool CreateFunctionExecutor::DExecute() {
   /* Pass it off to the UDF handler
 	Once you get the function pointer, put that an other details into the catalog */
   
-  //auto udf_h(new peloton::udf::UDFHandler());
-  Function *llvm_func_ptr = peloton::udf::g_udf_handler.Execute(current_txn, proname, prosrc_bin[0], proargnames, proargtypes, prorettype);
+  peloton::codegen::CodeContext& code_context =
+    peloton::udf::g_udf_handler.Execute(current_txn, proname, prosrc_bin[0],
+                                        proargnames, proargtypes, prorettype);
   std::cout << "LLVM fn ptr\n";
 
-  if(llvm_func_ptr) {
-  	result = ResultType::SUCCESS;
-  	// Insert into catalog
+  if(code_context.LookupPlpgsqlUDF(proname)) {    
+    try
+    {
+      // Insert into catalog
+      catalog::Catalog::GetInstance()->AddPlpgsqlUDF(proname, proargtypes, prorettype,
+                                        prolang, proname, &code_context, current_txn);
+      result = ResultType::SUCCESS;
+    }
+    catch (CatalogException e) {
+      result = ResultType::FAILURE;
+      //txn_manager.AbortTransaction(txn);
+      throw e;
+    }
   	// If insert fails, it resets result to failure
   } else {
   	result = ResultType::FAILURE;
@@ -73,8 +86,10 @@ bool CreateFunctionExecutor::DExecute() {
   current_txn->SetResult(result);
 
    if (current_txn->GetResult() == ResultType::SUCCESS) {
+      std::cout << "Registered UDF successfully!\n";
       LOG_TRACE("Registered UDF successfully!");
     } else if (current_txn->GetResult() == ResultType::FAILURE) {
+      std::cout << "Could not register function. SAD.\n";
       LOG_TRACE("Could not register function. SAD."); 
     } else {
       LOG_TRACE("Result is: %s",
