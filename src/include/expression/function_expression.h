@@ -114,11 +114,11 @@ class FunctionExpression : public AbstractExpression {
       const std::vector<std::unique_ptr<AbstractExpression>> &children,
       const std::string &func_name) {
     if (func_arg_types_.size() != children.size()) {
-      throw Exception(EXCEPTION_TYPE_EXPRESSION,
-                      "Unexpected number of arguments to function: " +
-                          func_name + ". Expected: " +
-                          std::to_string(func_arg_types_.size()) + " Actual: " +
-                          std::to_string(children.size()));
+      throw Exception(
+          EXCEPTION_TYPE_EXPRESSION,
+          "Unexpected number of arguments to function: " + func_name +
+              ". Expected: " + std::to_string(func_arg_types_.size()) +
+              " Actual: " + std::to_string(children.size()));
     }
     // check that the types are correct
     for (size_t i = 0; i < func_arg_types_.size(); i++) {
