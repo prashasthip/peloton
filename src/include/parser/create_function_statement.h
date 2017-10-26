@@ -47,10 +47,7 @@ struct Parameter {
 
   Parameter(DataType type) : type(type){};
 
-  virtual ~Parameter() {
-    // delete name
-    // delete type?
-  }
+  virtual ~Parameter() {}
 
   DataType type;
   FuncParamMode mode;
