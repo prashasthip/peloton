@@ -870,6 +870,12 @@ void Catalog::InitializeLanguages() {
       txn_manager.AbortTransaction(txn);
       throw CatalogException("Failed to add language 'internal'");
     }
+    // Add "plpgsql" language
+    if (!LanguageCatalog::GetInstance()->
+        InsertLanguage("plpgsql", pool_.get(), txn)) {
+      txn_manager.AbortTransaction(txn);
+      throw CatalogException("Failed to add language 'plpgsql'");
+    }
     txn_manager.CommitTransaction(txn);
     initialized = true;
   }

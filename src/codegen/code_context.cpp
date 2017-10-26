@@ -151,6 +151,21 @@ CodeContext::~CodeContext() {
   // in the header file. To make this compile, this destructor needs to exist.
 }
 
+void CodeContext::RegisterPlpgsqlUDF(llvm::Function *func_ptr) {
+  const auto name = func_ptr->getName();
+
+  if (LookupPlpgsqlUDF(name) != nullptr) {
+    LOG_DEBUG("Plpgsql UDF '%s' already registered, skipping ...", name.data());
+    return;
+  }
+
+  // Register the plpgsql UDF
+  plpgsql_udfs_[name] = func_ptr;
+
+  /// Insert the function without an implementation
+  functions_.emplace_back(func_ptr, nullptr);
+}
+
 void CodeContext::RegisterFunction(llvm::Function *func) {
   PL_ASSERT(func->getParent() == &GetModule() &&
             "The provided function is part of a different context and module");

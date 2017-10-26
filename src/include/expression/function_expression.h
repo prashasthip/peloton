@@ -62,6 +62,7 @@ class FunctionExpression : public AbstractExpression {
       const AbstractTuple *tuple1, const AbstractTuple *tuple2,
       UNUSED_ATTRIBUTE executor::ExecutorContext *context) const override {
     std::vector<type::Value> child_values;
+
     PL_ASSERT(func_.impl != nullptr);
     for (auto &child : children_) {
       child_values.push_back(child->Evaluate(tuple1, tuple2, context));

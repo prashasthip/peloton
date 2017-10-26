@@ -21,20 +21,28 @@ UDFParser::UDFParser(UNUSED_ATTRIBUTE concurrency::Transaction *txn, std::string
 	BinopPrecedence['*'] = 40; // highest.
 }
 
-Function* UDFParser::Compile() {
+codegen::CodeContext& UDFParser::Compile() {
 	std::cout << "Inside compile\n";
 	std::cout << "Function body : " << body_ << "\n";
+
+  // To contain the context of the UDF
+  codegen::CodeContext *code_context = new codegen::CodeContext();
+  codegen::CodeGen cg{*code_context};
+
 	func_body_string = body_;
 	func_body_iterator = func_body_string.begin();
+  LastChar = ' ';
+  std::cout << "Peeked" << peekNext() << "\n";
 	if (auto F = ParseDefinition()) {
-	    if (auto *LF = F->codegen()) {
-	      fprintf(stderr, "Read function definition:");
-	      LF->dump();
-	      return LF;
+	    if (auto *func_ptr = F->codegen(cg).GetValue()) {
+	      fprintf(stderr, "Read function definition");
+	      func_ptr->dump();
+	      return cg.GetCodeContext();
 	    }
 	} 
+  fprintf(stderr, "Err parsing the function");
 	// Error in function body
-	return nullptr;
+	return cg.GetCodeContext();;
 }
 
 int UDFParser::getNextChar() {
@@ -66,11 +74,13 @@ int UDFParser::GetTokPrecedence() {
 }
 
 int UDFParser::gettok() {
-  static int LastChar = ' ';
+  cout << "LAstChar " << LastChar << "\n";
 
   // Skip any whitespace.
   while (isspace(LastChar))
     LastChar = getNextChar();
+
+  cout << "1 LAstChar " << LastChar << "\n";
 
   if (isalpha(LastChar)) { // identifier: [a-zA-Z][a-zA-Z0-9]*
     IdentifierStr = LastChar;
@@ -318,8 +328,9 @@ std::unique_ptr<PrototypeAST> UDFParser::ParsePrototype() {
 /// definition ::= 'def' prototype expression
 std::unique_ptr<FunctionAST> UDFParser::ParseDefinition() {
   getNextToken(); // eat begin.
+  std::cout << CurTok << "Curtok after eating begin 1\n";
   getNextToken();
-  std::cout << CurTok << "Curtok after eating begin\n";
+  std::cout << CurTok << "Curtok after eating begin 2\n";
   std::cout << "inside parsedef\n";
   auto Proto = ParsePrototype();
   if (!Proto)
