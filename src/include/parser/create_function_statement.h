@@ -2,7 +2,7 @@
 //
 //                         Peloton
 //
-//create_function_statement.h
+// create_function_statement.h
 //
 // Identification: src/include/parser/create_function_statement.h
 //
@@ -12,21 +12,21 @@
 
 #pragma once
 
-#include "expression/abstract_expression.h"
-#include "type/types.h"
 #include "common/sql_node_visitor.h"
+#include "expression/abstract_expression.h"
 #include "parser/sql_statement.h"
+#include "type/types.h"
 
 namespace peloton {
 namespace parser {
 
 struct Parameter {
   enum class FuncParamMode {
-    FUNC_PARAM_IN = 'i',		/* input only */
-    FUNC_PARAM_OUT = 'o',		/* output only */
-    FUNC_PARAM_INOUT = 'b',		/* both */
-    FUNC_PARAM_VARIADIC = 'v',	/* variadic (always input) */
-    FUNC_PARAM_TABLE = 't'	
+    FUNC_PARAM_IN = 'i',       /* input only */
+    FUNC_PARAM_OUT = 'o',      /* output only */
+    FUNC_PARAM_INOUT = 'b',    /* both */
+    FUNC_PARAM_VARIADIC = 'v', /* variadic (always input) */
+    FUNC_PARAM_TABLE = 't'
   };
 
   enum class DataType {
@@ -45,14 +45,14 @@ struct Parameter {
     BOOLEAN
   };
 
-  Parameter(DataType type): type(type) {};	
+  Parameter(DataType type) : type(type){};
 
-  virtual ~Parameter(){
-    //delete name
-    // delete type? 	 		
-  }	
+  virtual ~Parameter() {
+    // delete name
+    // delete type?
+  }
 
-  DataType type; 
+  DataType type;
   FuncParamMode mode;
 
   static type::TypeId GetValueType(DataType type) {
@@ -83,58 +83,51 @@ struct Parameter {
       default:
         return type::TypeId::INVALID;
     }
-  }	
+  }
 };
 
-struct ReturnType : Parameter { 
-  ReturnType(DataType type):Parameter(type){};
-  virtual ~ReturnType(){}
+struct ReturnType : Parameter {
+  ReturnType(DataType type) : Parameter(type){};
+  virtual ~ReturnType() {}
 };
 
 struct FuncParameter : Parameter {
   std::string name;
-  FuncParameter(std::string name, DataType type):Parameter(type),name(name){};
-  virtual ~FuncParameter(){}
+  FuncParameter(std::string name, DataType type)
+      : Parameter(type), name(name){};
+  virtual ~FuncParameter() {}
 };
 
-//might want to change it to char* instead of string
+// might want to change it to char* instead of string
 class CreateFunctionStatement : public SQLStatement {
-public:
-  enum class ASclause {
-    EXECUTABLE=0,
-    QUERY_STRING=1	  	
-  };
+ public:
+  enum class ASclause { EXECUTABLE = 0, QUERY_STRING = 1 };
 
-  CreateFunctionStatement() :SQLStatement(StatementType::CREATE_FUNC){
-  }; 
+  CreateFunctionStatement() : SQLStatement(StatementType::CREATE_FUNC){};
 
   virtual ~CreateFunctionStatement() {
     delete return_type;
-    for (auto fp : *func_parameters)
-      delete fp;
+    for (auto fp : *func_parameters) delete fp;
     delete func_parameters;
   }
 
-  virtual void Accept(SqlNodeVisitor* v) const override {
-    v->Visit(this);
-  }
+  virtual void Accept(SqlNodeVisitor* v) const override { v->Visit(this); }
 
   PLType language;
   ASclause as_type;
   std::vector<std::string> function_body;
-  ReturnType *return_type;
-  std::vector<FuncParameter*>* func_parameters;	
+  ReturnType* return_type;
+  std::vector<FuncParameter*>* func_parameters;
   std::string function_name;
   bool replace = false;
 
-  void set_as_type(){
-    if(function_body.size() > 1)
+  void set_as_type() {
+    if (function_body.size() > 1)
       as_type = ASclause::EXECUTABLE;
     else
       as_type = ASclause::QUERY_STRING;
   }
 };
 
-}  // End parser namespace
-}  // End peloton namespace
-
+}  // namespace parser
+}  // namespace peloton

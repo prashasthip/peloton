@@ -12,10 +12,10 @@
 
 #pragma once
 
-#include "expression/abstract_expression.h"
 #include "common/sql_node_visitor.h"
-#include "type/value.h"
+#include "expression/abstract_expression.h"
 #include "function/functions.h"
+#include "type/value.h"
 
 namespace peloton {
 namespace expression {
@@ -40,7 +40,7 @@ class FunctionExpression : public AbstractExpression {
                      type::TypeId return_type,
                      const std::vector<type::TypeId>& arg_types,
                      const std::vector<AbstractExpression*>& children,
-                     codegen::CodeContext *code_context)
+                     codegen::CodeContext* code_context)
       : AbstractExpression(ExpressionType::FUNCTION, return_type),
         func_ptr_(func_ptr),
         func_arg_types_(arg_types),
@@ -52,10 +52,9 @@ class FunctionExpression : public AbstractExpression {
   }
 
   void SetFunctionExpressionParameters(
-      function::BuiltInFuncType func_ptr,
-      type::TypeId val_type,
+      function::BuiltInFuncType func_ptr, type::TypeId val_type,
       const std::vector<type::TypeId>& arg_types,
-      codegen::CodeContext *code_context) {
+      codegen::CodeContext* code_context) {
     func_ptr_ = func_ptr;
     return_value_type_ = val_type;
     func_arg_types_ = arg_types;
@@ -73,7 +72,7 @@ class FunctionExpression : public AbstractExpression {
     for (auto& child : children_) {
       child_values.push_back(child->Evaluate(tuple1, tuple2, context));
     }
-    //For Builtins
+    // For Builtins
 
     type::Value ret = func_ptr_(child_values);
 
@@ -88,7 +87,9 @@ class FunctionExpression : public AbstractExpression {
     return ret;
   }
 
-  AbstractExpression* Copy() const override { return new FunctionExpression(*this); }
+  AbstractExpression* Copy() const override {
+    return new FunctionExpression(*this);
+  }
 
   std::string func_name_;
 
@@ -96,7 +97,7 @@ class FunctionExpression : public AbstractExpression {
 
   std::vector<type::TypeId> func_arg_types_;
 
-  codegen::CodeContext *code_context_;
+  codegen::CodeContext* code_context_;
 
   virtual void Accept(SqlNodeVisitor* v) override { v->Visit(this); }
 
@@ -109,30 +110,29 @@ class FunctionExpression : public AbstractExpression {
         code_context_(other.code_context_) {}
 
  private:
-
   // throws an exception if children return unexpected types
   void CheckChildrenTypes(
       const std::vector<std::unique_ptr<AbstractExpression>>& children,
       const std::string& func_name) {
     if (func_arg_types_.size() != children.size()) {
-      throw Exception(EXCEPTION_TYPE_EXPRESSION,
-                      "Unexpected number of arguments to function: " +
-                          func_name + ". Expected: " +
-                          std::to_string(func_arg_types_.size()) + " Actual: " +
-                          std::to_string(children.size()));
+      throw Exception(
+          EXCEPTION_TYPE_EXPRESSION,
+          "Unexpected number of arguments to function: " + func_name +
+              ". Expected: " + std::to_string(func_arg_types_.size()) +
+              " Actual: " + std::to_string(children.size()));
     }
     // check that the types are correct
     for (size_t i = 0; i < func_arg_types_.size(); i++) {
       if (children[i]->GetValueType() != func_arg_types_[i]) {
-        throw Exception(EXCEPTION_TYPE_EXPRESSION,
-                        "Incorrect argument type to fucntion: " + func_name +
-                            ". Argument " + std::to_string(i) +
-                            " expected type " +
-                            type::Type::GetInstance(func_arg_types_[i])->ToString() +
-                            " but found " +
-                            type::Type::GetInstance(children[i]->GetValueType())
-                                ->ToString() +
-                            ".");
+        throw Exception(
+            EXCEPTION_TYPE_EXPRESSION,
+            "Incorrect argument type to fucntion: " + func_name +
+                ". Argument " + std::to_string(i) + " expected type " +
+                type::Type::GetInstance(func_arg_types_[i])->ToString() +
+                " but found " +
+                type::Type::GetInstance(children[i]->GetValueType())
+                    ->ToString() +
+                ".");
       }
     }
   }
