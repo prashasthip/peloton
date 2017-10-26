@@ -7,23 +7,23 @@ namespace peloton {
 namespace udf {
 
 // Keeps track of symbols while declaring a function
-static std::map<std::string, llvm::Value *> NamedValues;
+static std::map<std::string, llvm::Value *> named_values;
 
 // Codegen for NumberExprAST
-peloton::codegen::Value NumberExprAST::codegen(
+peloton::codegen::Value NumberExprAST::Codegen(
     peloton::codegen::CodeGen &codegen) {
   std::cout << "NumberExprAST codegen\n";
-  auto numberCodegenVal = peloton::codegen::Value(
+  auto number_codegen_val = peloton::codegen::Value(
       peloton::codegen::type::Type(type::TypeId::DECIMAL, false),
-      codegen.ConstDouble(Val));
-  return numberCodegenVal;
+      codegen.ConstDouble(val));
+  return number_codegen_val;
 }
 
 // Codegen for VariableExprAST
-peloton::codegen::Value VariableExprAST::codegen(
+peloton::codegen::Value VariableExprAST::Codegen(
     UNUSED_ATTRIBUTE peloton::codegen::CodeGen &codegen) {
   std::cout << "VariabelExprAST codegen\n";
-  llvm::Value *val = NamedValues[Name];
+  llvm::Value *val = named_values[name];
   if (val) {
     return peloton::codegen::Value(
         peloton::codegen::type::Type(type::TypeId::DECIMAL, false), val);
@@ -32,23 +32,23 @@ peloton::codegen::Value VariableExprAST::codegen(
 }
 
 // Codegen for BinaryExprAST
-peloton::codegen::Value BinaryExprAST::codegen(
+peloton::codegen::Value BinaryExprAST::Codegen(
     peloton::codegen::CodeGen &codegen) {
   std::cout << "Binary ExprAST codegen\n";
 
-  peloton::codegen::Value L = LHS->codegen(codegen);
-  peloton::codegen::Value R = RHS->codegen(codegen);
-  if (L.GetValue() == 0 || R.GetValue() == 0) return peloton::codegen::Value();
+  peloton::codegen::Value left = lhs->Codegen(codegen);
+  peloton::codegen::Value right = rhs->Codegen(codegen);
+  if (left.GetValue() == 0 || right.GetValue() == 0) return peloton::codegen::Value();
 
-  switch (Op) {
+  switch (op) {
     case '+':
-      return L.Add(codegen, R);
+      return left.Add(codegen, right);
     case '-':
-      return L.Sub(codegen, R);
+      return left.Sub(codegen, right);
     case '*':
-      return L.Mul(codegen, R);
+      return left.Mul(codegen, right);
     case '/':
-      return L.Div(codegen, R);
+      return left.Div(codegen, right);
     // TODO(PP): add < and > later on
     /*case '>':
       L = Builder.CreateFCmpUGT(L, R, "cmpGT");
@@ -64,29 +64,29 @@ peloton::codegen::Value BinaryExprAST::codegen(
 }
 
 // Codegen for CallExprAST
-peloton::codegen::Value CallExprAST::codegen(
+peloton::codegen::Value CallExprAST::Codegen(
     peloton::codegen::CodeGen &codegen) {
   std::cout << "CallExprAST codegen\n";
 
   // Get llvm::function ptr from name
-  auto *CalleeF = codegen.LookupPlpgsqlUDF(Callee);
-  if (CalleeF == 0) {
+  auto *callee_func = codegen.LookupPlpgsqlUDF(callee);
+  if (callee_func == 0) {
     return LogErrorV("Unknown function referenced");
   }
 
   // If argument mismatch error.
-  if (CalleeF->arg_size() != Args.size())
+  if (callee_func->arg_size() != args.size())
     return LogErrorV("Incorrect # arguments passed");
 
-  std::vector<llvm::Value *> ArgsV;
-  for (unsigned i = 0, e = Args.size(); i != e; ++i) {
-    ArgsV.push_back(Args[i]->codegen(codegen).GetValue());
-    if (ArgsV.back() == 0) {
+  std::vector<llvm::Value *> args_val;
+  for (unsigned i = 0, size = args.size(); i != size; ++i) {
+    args_val.push_back(args[i]->Codegen(codegen).GetValue());
+    if (args_val.back() == 0) {
       return LogErrorV("Arguments could not be passed in");
     }
   }
 
-  auto *call_ret = codegen.CallFunc(CalleeF, ArgsV);
+  auto *call_ret = codegen.CallFunc(callee_func, args_val);
 
   auto call_val = peloton::codegen::Value(
       peloton::codegen::type::Type(type::TypeId::DECIMAL, false), call_ret);
@@ -95,23 +95,23 @@ peloton::codegen::Value CallExprAST::codegen(
 }
 
 // Codegen for PrototypeAST
-peloton::codegen::Value PrototypeAST::codegen(
+peloton::codegen::Value PrototypeAST::Codegen(
     peloton::codegen::CodeGen &codegen) {
   std::cout << "PrototypeAST codegen\n";
   // TODO(PP) : Later change this to handle any return type and any argument
   // type
-  std::vector<llvm::Type *> arg_types(Args.size(), codegen.DoubleType());
+  std::vector<llvm::Type *> arg_types(args.size(), codegen.DoubleType());
   auto ret_type = codegen.DoubleType();
-  auto *FT = llvm::FunctionType::get(ret_type, arg_types, false);
+  auto *func_type = llvm::FunctionType::get(ret_type, arg_types, false);
 
-  auto *func_ptr = codegen.RegisterPlpgsqlUDF(Name, FT);
+  auto *func_ptr = codegen.RegisterPlpgsqlUDF(name, func_type);
 
   // Set names for all arguments.
-  unsigned Idx = 0;
+  unsigned idx = 0;
   for (auto iter = func_ptr->arg_begin(), end = func_ptr->arg_end();
        iter != end; iter++) {
-    iter->setName(Args[Idx]);
-    NamedValues[Args[Idx]] = iter;
+    iter->setName(args[idx]);
+    named_values[args[idx]] = iter;
   }
 
   auto proto_val = peloton::codegen::Value(
@@ -121,13 +121,13 @@ peloton::codegen::Value PrototypeAST::codegen(
 }
 
 // Codegen for FunctionAST
-peloton::codegen::Value FunctionAST::codegen(
+peloton::codegen::Value FunctionAST::Codegen(
     peloton::codegen::CodeGen &codegen) {
   std::cout << "FunctionAST codegen\n";
   // First, check for an existing function from a previous 'extern' declaration.
-  NamedValues.clear();
+  named_values.clear();
 
-  peloton::codegen::Value proto_val = Proto->codegen(codegen);
+  peloton::codegen::Value proto_val = proto->Codegen(codegen);
   llvm::Function *func_ptr =
       reinterpret_cast<llvm::Function *>(proto_val.GetValue());
 
@@ -140,7 +140,7 @@ peloton::codegen::Value FunctionAST::codegen(
       llvm::BasicBlock::Create(code_context_.GetContext(), "entry", func_ptr);
   code_context_.GetBuilder().SetInsertPoint(entry_bb);
 
-  peloton::codegen::Value ret = Body->codegen(codegen);
+  peloton::codegen::Value ret = body->Codegen(codegen);
 
   if (ret.GetValue()) {
     code_context_.GetBuilder().CreateRet(ret.GetValue());
@@ -154,22 +154,22 @@ peloton::codegen::Value FunctionAST::codegen(
   return peloton::codegen::Value();
 }
 
-std::unique_ptr<ExprAST> LogError(const char *Str) {
-  fprintf(stderr, "Error: %s\n", Str);
+std::unique_ptr<ExprAST> LogError(const char *str) {
+  fprintf(stderr, "Error: %s\n", str);
   return 0;
 }
 
-std::unique_ptr<PrototypeAST> LogErrorP(const char *Str) {
-  LogError(Str);
+std::unique_ptr<PrototypeAST> LogErrorP(const char *str) {
+  LogError(str);
   return 0;
 }
-FunctionAST *ErrorF(const char *Str) {
-  LogError(Str);
+FunctionAST *ErrorF(const char *str) {
+  LogError(str);
   return 0;
 }
 
-peloton::codegen::Value LogErrorV(const char *Str) {
-  LogError(Str);
+peloton::codegen::Value LogErrorV(const char *str) {
+  LogError(str);
   return peloton::codegen::Value();
 }
 
