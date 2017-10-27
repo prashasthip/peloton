@@ -48,7 +48,7 @@ bool CreateFunctionExecutor::DExecute() {
   // auto pool = context->GetPool();
   
   auto proname = node.GetFunctionName();
-  oid_t prolang = catalog::LanguageCatalog::GetInstance()->GetLanguageOid("plpgsql", current_txn);
+  //oid_t prolang = catalog::LanguageCatalog::GetInstance()->GetLanguageOid("plpgsql", current_txn);
   //auto pronargs = node.GetNumParams();
   auto prorettype = node.GetReturnType();
   auto proargtypes = node.GetFunctionParameterTypes();
@@ -63,9 +63,9 @@ bool CreateFunctionExecutor::DExecute() {
   peloton::codegen::CodeContext& code_context =
     peloton::udf::g_udf_handler.Execute(current_txn, proname, prosrc_bin[0],
                                         proargnames, proargtypes, prorettype);
-  std::cout << "LLVM fn ptr\n";
+  std::cout << "LLVM fn ptr" << &code_context << "\n";
 
-  if(code_context.LookupPlpgsqlUDF(proname)) {    
+  /*if(code_context.LookupPlpgsqlUDF(proname)) {    
     try
     {
       // Insert into catalog
@@ -81,8 +81,9 @@ bool CreateFunctionExecutor::DExecute() {
   	// If insert fails, it resets result to failure
   } else {
   	result = ResultType::FAILURE;
-  }
+  }*/
 
+  result = ResultType::SUCCESS;
   current_txn->SetResult(result);
 
    if (current_txn->GetResult() == ResultType::SUCCESS) {

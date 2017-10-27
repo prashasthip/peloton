@@ -197,28 +197,6 @@ void CodeGen::ThrowIfDivideByZero(llvm::Value *divide_by_zero) const {
 }
 
 // Register the given function symbol and the LLVM function type it represents
-llvm::Function *CodeGen::RegisterPlpgsqlUDF(const std::string &fn_name,
-                                         llvm::FunctionType *fn_type) {
-  // Check if this is already registered quit if to
-  auto *plpgsql_udf = LookupPlpgsqlUDF(fn_name);
-  if (plpgsql_udf != nullptr) {
-    return plpgsql_udf;
-  }
-
-  // TODO: Function attributes here
-  // Construct the function
-  auto *function = llvm::Function::Create(
-      fn_type, llvm::Function::ExternalLinkage, fn_name, &GetModule());
-
-  // Register the function in the context
-  code_context_.RegisterPlpgsqlUDF(function);
-
-  // That's it
-  return function;
-}
-
-
-// Register the given function symbol and the LLVM function type it represents
 llvm::Function *CodeGen::RegisterBuiltin(const std::string &fn_name,
                                          llvm::FunctionType *fn_type,
                                          void *func_impl) {

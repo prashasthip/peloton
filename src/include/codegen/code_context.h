@@ -61,19 +61,10 @@ class CodeContext {
   /// Register a built-in C/C++ function
   void RegisterBuiltin(llvm::Function *func_decl, FuncPtr func_impl);
 
-  /// Register pl/pgsql UDF
-  void RegisterPlpgsqlUDF(llvm::Function *func_ptr);
-
   /// Lookup a builtin function that has been registered in this context
   llvm::Function *LookupBuiltin(const std::string &name) const {
     auto iter = builtins_.find(name);
     return iter != builtins_.end() ? iter->second : nullptr;
-  }
-
-  /// Lookup a plpgsql UDF function that has been registered in this context
-  llvm::Function *LookupPlpgsqlUDF(const std::string &name) const {
-    auto iter = plpgsql_udfs_.find(name);
-    return iter != plpgsql_udfs_.end() ? iter->second : nullptr;
   }
 
   /// Compile all the code contained in this context
@@ -105,12 +96,12 @@ class CodeContext {
   // Get the module
   llvm::Module &GetModule() const { return *module_; }
 
-  // Get the IR Builder
-  llvm::IRBuilder<> &GetBuilder() { return *builder_; }
-
  private:
   // Get the raw IR in text form
   std::string GetIR() const;
+
+  // Get the IR Builder
+  llvm::IRBuilder<> &GetBuilder() { return *builder_; }
 
   // Get the data layout
   const llvm::DataLayout &GetDataLayout() const;
@@ -156,9 +147,6 @@ class CodeContext {
 
   // All C/C++ builtin functions and their implementations
   std::unordered_map<std::string, llvm::Function *> builtins_;
-
-  // All PL/pgSQL UDFs and their implementations
-  std::unordered_map<std::string, llvm::Function *> plpgsql_udfs_;
 
   // The functions needed in this module, and their implementations. If the
   // function has not been compiled yet, the function pointer will be NULL. The
