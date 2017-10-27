@@ -120,15 +120,9 @@ class CodeGen {
   llvm::Function *LookupBuiltin(const std::string &fn_name) const {
     return code_context_.LookupBuiltin(fn_name);
   }
-  llvm::Function *LookupPlpgsqlUDF(const std::string &fn_name) const {
-    return code_context_.LookupPlpgsqlUDF(fn_name);
-  }
 
   llvm::Function *RegisterBuiltin(const std::string &fn_name,
                                   llvm::FunctionType *fn_type, void *func_impl);
-
-  llvm::Function *RegisterPlpgsqlUDF(const std::string &fn_name,
-                                         llvm::FunctionType *fn_type);
 
   /// Get the runtime state function argument
   llvm::Value *GetState() const;

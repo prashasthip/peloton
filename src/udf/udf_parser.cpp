@@ -19,34 +19,60 @@ codegen::CodeContext &UDFParser::Compile(std::string func_name,
     std::string func_body,
     std::vector<std::string> args_name,
     std::vector<arg_type> args_type, arg_type ret_type) {
-  name_ = func_name;
-  body_ = func_body;
-  args_name_ = args_name;
-  args_type_ = args_type;
-  ret_type_ = ret_type;
 
   std::cout << "Inside compile\n";
-  std::cout << "Function body : " << body_ << "\n";
+  std::cout << "Function body : " << func_body << "\n";
 
   // To contain the context of the UDF
   codegen::CodeContext *code_context = new codegen::CodeContext();
   codegen::CodeGen cg{*code_context};
 
-  func_body_string_ = body_;
+  llvm::Type *llvm_ret_type = GetCodegenParamType(ret_type, cg);
+
+  // vector of pair of <argument name, argument type>
+  std::vector<std::pair<std::string, llvm::Type *>> llvm_args;
+
+  auto iterator_arg_name = args_name.begin();
+  auto iterator_arg_type = args_type.begin();
+
+  while(iterator_arg_name != args_name.end() &&
+        iterator_arg_type != args_type.end()) {
+    llvm_args.emplace_back(*iterator_arg_name,
+        GetCodegenParamType(*iterator_arg_type, cg));
+
+    ++iterator_arg_name;
+    ++iterator_arg_type;
+  }
+
+  // Construct the Function Builder object
+  codegen::FunctionBuilder fb{*code_context, func_name,
+      llvm_ret_type, llvm_args};
+
+  func_body_string_ = func_body;
   func_body_iterator_ = func_body_string_.begin();
   last_char_ = ' ';
   std::cout << "Peeked" << PeekNext() << "\n";
   if (auto func = ParseDefinition()) {
-    if (auto *func_ptr = func->Codegen(cg).GetValue()) {
+    if (auto *func_ptr = func->Codegen(cg, fb)) {
       fprintf(stderr, "Read function definition");
       func_ptr->dump();
-      return cg.GetCodeContext();
     }
   }
-  fprintf(stderr, "Err parsing the function");
-  // Error in function body
   return cg.GetCodeContext();
-  ;
+}
+
+llvm::Type *UDFParser::GetCodegenParamType(arg_type type_val,
+    peloton::codegen::CodeGen &cg) {
+  // TODO(PP) : Add more types later
+  // For now I am assuming only doubles as parameters
+  if(type_val == type::TypeId::INTEGER) {
+    return cg.Int32Type();
+  } else if(type_val == type::TypeId::DECIMAL) {
+    return cg.DoubleType();
+  } else {
+  //For now assume it to be a bool to keep compiler happy
+    return cg.BoolType();
+  }
 }
 
 int UDFParser::GetNextChar() {
@@ -67,11 +93,15 @@ int UDFParser::PeekNext() {
 }
 
 int UDFParser::GetTokPrecedence() {
-  if (!isascii(cur_tok_)) return -1;
+  if (!isascii(cur_tok_)) {
+    return -1;
+  }
 
   // Make sure it's a declared binop.
   int tok_prec = binop_precedence_[cur_tok_];
-  if (tok_prec <= 0) return -1;
+  if (tok_prec <= 0) {
+    return -1;
+  }
   return tok_prec;
 }
 
@@ -79,19 +109,28 @@ int UDFParser::GetTok() {
   cout << "last_char_ " << last_char_ << "\n";
 
   // Skip any whitespace.
-  while (isspace(last_char_)) last_char_ = GetNextChar();
+  while (isspace(last_char_)) {
+    last_char_ = GetNextChar();
+  }
 
   cout << "1 last_char_ " << last_char_ << "\n";
 
   if (isalpha(last_char_)) {  // identifier: [a-zA-Z][a-zA-Z0-9]*
     identifier_str_ = last_char_;
-    while (isalnum((last_char_ = GetNextChar()))) identifier_str_ += last_char_;
-    if (identifier_str_ == "def")  // Remove this later
-      return tok_def;
-    if (identifier_str_ == "BEGIN" || identifier_str_ == "begin") return tok_begin;
-    if (identifier_str_ == "END" || identifier_str_ == "end") return tok_end;
-    if (identifier_str_ == "RETURN" || identifier_str_ == "return")
+
+    while (isalnum((last_char_ = GetNextChar()))) {
+      identifier_str_ += last_char_;
+    }
+
+    if (identifier_str_ == "BEGIN" || identifier_str_ == "begin") {
+     return tok_begin;
+    }
+    if (identifier_str_ == "END" || identifier_str_ == "end") {
+     return tok_end;
+    }
+    if (identifier_str_ == "RETURN" || identifier_str_ == "return") {
       return tok_return;
+    }
     return tok_identifier;
   }
 
@@ -127,16 +166,20 @@ int UDFParser::GetTok() {
     if (nextChar == '-') {
       last_char_ = GetNextChar();
       // Comment until end of line.
-      do
+      do {
         last_char_ = GetNextChar();
-      while (last_char_ != EOF && last_char_ != '\n' && last_char_ != '\r');
+      } while (last_char_ != EOF && last_char_ != '\n' && last_char_ != '\r');
 
-      if (last_char_ != EOF) return GetTok();
+      if (last_char_ != EOF) {
+       return GetTok();
+      }
     }
   }
 
   // Check for end of file.  Don't eat the EOF.
-  if (last_char_ == EOF) return tok_eof;
+  if (last_char_ == EOF) {
+    return tok_eof;
+  }
 
   // Otherwise, just return the character as its ascii value.
   int this_char = last_char_;
@@ -144,7 +187,9 @@ int UDFParser::GetTok() {
   return this_char;
 }
 
-int UDFParser::GetNextToken() { return cur_tok_ = GetTok(); }
+int UDFParser::GetNextToken() {
+ return cur_tok_ = GetTok();
+}
 
 std::unique_ptr<ExprAST> UDFParser::ParseNumberExpr() {
   auto result = llvm::make_unique<NumberExprAST>(num_val_);
@@ -160,9 +205,14 @@ std::unique_ptr<ExprAST> UDFParser::ParseNumberExpr() {
 std::unique_ptr<ExprAST> UDFParser::ParseParenExpr() {
   GetNextToken();  // eat (.
   auto expr = ParseExpression();
-  if (!expr) return nullptr;
+  if (!expr) {
+    return nullptr;
+  }
 
-  if (cur_tok_ != ')') return LogError("expected ')'");
+  if (cur_tok_ != ')') {
+   return LogError("expected ')'");
+  }
+
   GetNextToken();  // eat ).
 
   if (cur_tok_ == tok_semicolon) {
@@ -236,7 +286,7 @@ std::unique_ptr<ExprAST> UDFParser::ParseReturn() {
 ///   ::= numberexpr
 ///   ::= parenexpr
 std::unique_ptr<ExprAST> UDFParser::ParsePrimary() {
-  std::cout << "Inside Parse PRimary\n";
+  std::cout << "Inside Parse Primary\n";
   switch (cur_tok_) {
     default:
       std::cout << "Unknown tok " << cur_tok_ << "\n";
@@ -268,7 +318,9 @@ std::unique_ptr<ExprAST> UDFParser::ParseBinOpRHS(
 
     // If this is a binop that binds at least as tightly as the current binop,
     // consume it, otherwise we are done.
-    if (tok_prec < expr_prec) return lhs;
+    if (tok_prec < expr_prec) {
+     return lhs;
+    }
 
     // Okay, we know this is a binop.
     int bin_op = cur_tok_;
@@ -277,19 +329,23 @@ std::unique_ptr<ExprAST> UDFParser::ParseBinOpRHS(
 
     // Parse the primary expression after the binary operator.
     auto rhs = ParsePrimary();
-    if (!rhs) return nullptr;
+    if (!rhs) {
+     return nullptr;
+    }
 
     // If BinOp binds less tightly with rhs than the operator after rhs, let
     // the pending operator take rhs as its lhs.
     int next_prec = GetTokPrecedence();
     if (tok_prec < next_prec) {
       rhs = ParseBinOpRHS(tok_prec + 1, std::move(rhs));
-      if (!rhs) return nullptr;
+      if (!rhs) {
+       return nullptr;
+      }
     }
 
     // Merge lhs/rhs.
-    lhs =
-        llvm::make_unique<BinaryExprAST>(bin_op, std::move(lhs), std::move(rhs));
+    lhs = llvm::make_unique<BinaryExprAST>(bin_op, std::move(lhs),
+            std::move(rhs));
   }
 }
 
@@ -299,17 +355,11 @@ std::unique_ptr<ExprAST> UDFParser::ParseBinOpRHS(
 std::unique_ptr<ExprAST> UDFParser::ParseExpression() {
   std::cout << "Inside ParseExpression\n";
   auto lhs = ParsePrimary();
-  if (!lhs) return nullptr;
+  if (!lhs) {
+    return nullptr;
+  }
 
   return ParseBinOpRHS(0, std::move(lhs));
-}
-
-/// prototype
-///   ::= id '(' id* ')'
-std::unique_ptr<PrototypeAST> UDFParser::ParsePrototype() {
-  std::cout << "inside Parse prototype\n";
-  std::cout << "Successfully Parsed fn def\n";
-  return llvm::make_unique<PrototypeAST>(name_, std::move(args_name_));
 }
 
 /// definition ::= 'def' prototype expression
@@ -319,11 +369,13 @@ std::unique_ptr<FunctionAST> UDFParser::ParseDefinition() {
   GetNextToken();
   std::cout << cur_tok_ << "cur_tok_ after eating begin 2\n";
   std::cout << "inside Parsedef\n";
-  auto proto = ParsePrototype();
-  if (!proto) return nullptr;
+  //auto proto = ParsePrototype();
 
-  if (auto expr = ParseExpression())
-    return llvm::make_unique<FunctionAST>(std::move(proto), std::move(expr));
+  //if (!proto) return nullptr;
+
+  if (auto expr = ParseExpression()) {
+    return llvm::make_unique<FunctionAST>(std::move(expr));
+  }
   return nullptr;
 }
 
