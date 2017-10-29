@@ -26,8 +26,9 @@ namespace peloton {
 namespace executor {
 
 // Constructor for create_function_executor
-CreateFunctionExecutor::CreateFunctionExecutor(const planner::AbstractPlan *node,
-                               ExecutorContext *executor_context)
+CreateFunctionExecutor::CreateFunctionExecutor(
+                              const planner::AbstractPlan *node,
+                              ExecutorContext *executor_context)
     : AbstractExecutor(node, executor_context) {
   context = executor_context;
 }
@@ -43,17 +44,19 @@ bool CreateFunctionExecutor::DInit() {
 bool CreateFunctionExecutor::DExecute() {
   LOG_TRACE("Executing Create...");
   ResultType result;
-  const planner::CreateFunctionPlan &node = GetPlanNode<planner::CreateFunctionPlan>();
+  const planner::CreateFunctionPlan &node =
+    GetPlanNode<planner::CreateFunctionPlan>();
   auto current_txn = context->GetTransaction();
   // auto pool = context->GetPool();
   
   auto proname = node.GetFunctionName();
-  //oid_t prolang = catalog::LanguageCatalog::GetInstance()->GetLanguageOid("plpgsql", current_txn);
+  oid_t prolang = catalog::LanguageCatalog::GetInstance().GetLanguageByName(
+    "plpgsql", current_txn)->GetOid();
   //auto pronargs = node.GetNumParams();
   auto prorettype = node.GetReturnType();
   auto proargtypes = node.GetFunctionParameterTypes();
   auto proargnames = node.GetFunctionParameterNames();
-  auto prosrc_bin = node.GetFunctionBody();
+  auto prosrc = node.GetFunctionBody()[0];
   //auto isReplace = node.IsReplace(); // If replace, delete from the map, also see what's to be done on the JIT side
   // For now only cater to create
 
@@ -61,29 +64,27 @@ bool CreateFunctionExecutor::DExecute() {
 	Once you get the function pointer, put that an other details into the catalog */
   
   peloton::codegen::CodeContext& code_context =
-    peloton::udf::g_udf_handler.Execute(current_txn, proname, prosrc_bin[0],
+    peloton::udf::g_udf_handler.Execute(current_txn, proname, prosrc,
                                         proargnames, proargtypes, prorettype);
   std::cout << "LLVM fn ptr" << &code_context << "\n";
 
-  /*if(code_context.LookupPlpgsqlUDF(proname)) {    
+  auto func_ptr = code_context.GetUDF();
+  if(func_ptr != nullptr) {
     try
     {
       // Insert into catalog
-      catalog::Catalog::GetInstance()->AddPlpgsqlUDF(proname, proargtypes, prorettype,
-                                        prolang, proname, &code_context, current_txn);
+      catalog::Catalog::GetInstance()->AddPlpgsqlFunction(proname, proargtypes,
+        prorettype, prolang, prosrc, &code_context, current_txn);
       result = ResultType::SUCCESS;
     }
     catch (CatalogException e) {
       result = ResultType::FAILURE;
-      //txn_manager.AbortTransaction(txn);
       throw e;
     }
-  	// If insert fails, it resets result to failure
   } else {
-  	result = ResultType::FAILURE;
-  }*/
+    result = ResultType::FAILURE;
+  }
 
-  result = ResultType::SUCCESS;
   current_txn->SetResult(result);
 
    if (current_txn->GetResult() == ResultType::SUCCESS) {
@@ -96,7 +97,6 @@ bool CreateFunctionExecutor::DExecute() {
       LOG_TRACE("Result is: %s",
                 ResultTypeToString(current_txn->GetResult()).c_str());
     }
-
 
   return false;
 }

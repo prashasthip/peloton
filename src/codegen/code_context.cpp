@@ -94,6 +94,7 @@ CodeContext::CodeContext()
       module_(nullptr),
       builder_(nullptr),
       func_(nullptr),
+      udf_func_ptr_(nullptr),
       pass_manager_(nullptr),
       engine_(nullptr) {
   // Initialize JIT stuff

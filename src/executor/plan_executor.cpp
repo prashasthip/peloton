@@ -96,6 +96,8 @@ void PlanExecutor::ExecutePlan(
     return;
   }
 
+  std::cout <<"compiling and executing query\n";
+
   LOG_TRACE("Compiling and executing query ...");
   // Perform binding
   planner::BindingContext context;
