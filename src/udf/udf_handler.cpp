@@ -17,6 +17,8 @@ peloton::codegen::CodeContext& UDFHandler::Execute(
   // Get the Codegened Function Pointer
   peloton::codegen::CodeContext& code_context = parser->Compile(func_name,
 	func_body, args_name, args_type, ret_type);
+	// Optimize and JIT compile all functions created in this context
+	code_context.Compile();
   return code_context;
 }
 

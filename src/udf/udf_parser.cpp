@@ -54,6 +54,8 @@ codegen::CodeContext &UDFParser::Compile(std::string func_name,
   std::cout << "Peeked" << PeekNext() << "\n";
   if (auto func = ParseDefinition()) {
     if (auto *func_ptr = func->Codegen(cg, fb)) {
+      // Required for referencing from Peloton code
+      code_context->SetUDF(func_ptr);
       fprintf(stderr, "Read function definition");
       func_ptr->dump();
     }
