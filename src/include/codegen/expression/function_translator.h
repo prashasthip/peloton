@@ -13,8 +13,11 @@
 #pragma once
 
 #include "codegen/expression/expression_translator.h"
+#include "type/type.h"
 
 namespace peloton {
+
+using arg_type = type::TypeId;
 
 namespace expression {
 class FunctionExpression;
@@ -27,6 +30,8 @@ class FunctionTranslator : public ExpressionTranslator {
  public:
   FunctionTranslator(const expression::FunctionExpression &func_expr,
                      CompilationContext &context);
+  llvm::Type *GetCodegenParamType(arg_type type_val,
+    peloton::codegen::CodeGen &cg) const;
 
   codegen::Value DeriveValue(CodeGen &codegen,
                              RowBatch::Row &row) const override;

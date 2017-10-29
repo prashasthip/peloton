@@ -50,14 +50,14 @@ codegen::Value FunctionTranslator::DeriveValue(CodeGen &codegen,
   std::cout << "After getting function_expr\n";
 
   // Collect the arguments to the function
-  std::vector<codegen::Value> args;
-  for (uint32_t i = 0; i < func_expr.GetChildrenSize(); i++) {
-    args.push_back(row.DeriveValue(codegen, *func_expr.GetChild(i)));
-  }
 
   std::cout << "outside here\n";
 
   if(!func_expr.isUDF()) {
+    std::vector<codegen::Value> args;
+    for (uint32_t i = 0; i < func_expr.GetChildrenSize(); i++) {
+      args.push_back(row.DeriveValue(codegen, *func_expr.GetChild(i)));
+    }
     auto operator_id = func_expr.GetFunc().op_id;
 
     if (args.size() == 1) {
@@ -92,14 +92,48 @@ codegen::Value FunctionTranslator::DeriveValue(CodeGen &codegen,
       return nary_op->DoWork(codegen, args, OnError::Exception);
     }
   } else { // It's a UDF
+
+    std::cout << "hi\n";
+    auto *func_context = func_expr.GetFuncContext();
+    CodeGen cg{*func_context};
+
+    std::cout << "bye\n";
+    std::vector<codegen::Value> args;
+    for (uint32_t i = 0; i < func_expr.GetChildrenSize(); i++) {
+      args.push_back(row.DeriveValue(cg, *func_expr.GetChild(i)));
+    }
+
     std::cout << "Evaluating UDF\n";
 
-    auto *func_context = func_expr.GetFuncContext();
+    std::cout << "Num of args " << args.size() << "\n";
 
     std::vector<llvm::Value *> raw_args;
     for (uint32_t i = 0; i < args.size(); i++) {
       raw_args.push_back(args[i].GetValue());
+      //raw_args.push_back(llvm::ConstantFP::get(func_context->GetUDF()->getFunctionType()->getContext(), llvm::APFloat(1.0)));
     }
+    std::cout << "len " << raw_args.size() << "\n";
+
+    std::cout <<
+      func_context->GetUDF()->getFunctionType()->getNumParams() << "\n";
+
+      /*std::cout << (func_context->GetUDF()->getFunctionType()->getParamType(0));
+      std::cout << "\n";
+
+      std::cout << raw_args[0]->getType();
+      std::cout << "\n";
+
+      std::cout << func_context->GetUDF()->getFunctionType()->getParamType(1);
+      std::cout << "\n"; */
+
+    func_context->GetUDF()->getFunctionType()->getParamType(0)->dump();
+    std::cout << "\n";
+
+    raw_args[0]->getType()->dump();
+    std::cout << "\n";
+
+    std::cout << (func_context->GetUDF()->getFunctionType()->getParamType(0) == raw_args[0]->getType());
+    std::cout << "\n";
 
     auto call_ret = func_context->GetBuilder().CreateCall(
         func_context->GetUDF(), raw_args);

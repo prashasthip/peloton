@@ -54,6 +54,7 @@ void PlanExecutor::ExecutePlan(
 
   if (!settings::SettingsManager::GetBool(settings::SettingId::codegen)
       || !codegen::QueryCompiler::IsSupported(*plan)) {
+    std::cout << "I am not in codegen\n";
     bool status;
     std::unique_ptr<executor::AbstractExecutor> executor_tree(
         BuildExecutorTree(nullptr, plan.get(), executor_context.get()));

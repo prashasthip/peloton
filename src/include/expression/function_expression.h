@@ -56,6 +56,7 @@ class FunctionExpression : public AbstractExpression {
   void SetBuiltinFunctionExpressionParameters(
       function::BuiltInFuncType func_ptr, type::TypeId val_type,
       const std::vector<type::TypeId> &arg_types) {
+    isUDF_ = false;
     func_ = func_ptr;
     return_value_type_ = val_type;
     func_arg_types_ = arg_types;
@@ -65,6 +66,7 @@ class FunctionExpression : public AbstractExpression {
   void SetUDFFunctionExpressionParameters(
       peloton::codegen::CodeContext *func_context, type::TypeId val_type,
       const std::vector<type::TypeId> &arg_types) {
+    isUDF_ = true;
     func_context_ = func_context;
     return_value_type_ = val_type;
     func_arg_types_ = arg_types;

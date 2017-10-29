@@ -44,6 +44,9 @@ codegen::CodeContext &UDFParser::Compile(std::string func_name,
     ++iterator_arg_type;
   }
 
+  std::cout << "num args: " << args_type.size() <<
+  " " << args_name.size() << "\n";
+
   // Construct the Function Builder object
   codegen::FunctionBuilder fb{*code_context, func_name,
       llvm_ret_type, llvm_args};
@@ -68,8 +71,10 @@ llvm::Type *UDFParser::GetCodegenParamType(arg_type type_val,
   // TODO(PP) : Add more types later
   // For now I am assuming only doubles as parameters
   if(type_val == type::TypeId::INTEGER) {
+    std::cout << "integer type\n";
     return cg.Int32Type();
   } else if(type_val == type::TypeId::DECIMAL) {
+    std::cout << "double type\n";
     return cg.DoubleType();
   } else {
   //For now assume it to be a bool to keep compiler happy
