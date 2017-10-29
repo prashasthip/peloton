@@ -108,12 +108,16 @@ void PlanExecutor::ExecutePlan(
   plan->GetOutputColumns(columns);
   codegen::BufferingConsumer consumer{columns, context};
 
+  std::cout << "Here ok\n";
+
   // Compile & execute the query
   codegen::QueryCompiler compiler;
   auto query = compiler.Compile(*plan, consumer);
+  std::cout << "query compiled\n";
   query->Execute(*txn, executor_context.get(),
                  reinterpret_cast<char *>(consumer.GetState()));
 
+  std::cout << " query executed\n";
   // Iterate over results
   const auto &results = consumer.GetOutputTuples();
   for (const auto &tuple : results) {

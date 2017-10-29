@@ -2775,6 +2775,8 @@ std::string OperatorIdToString(OperatorId op_id) {
       return "LogicalAnd";
     case OperatorId::LogicalOr:
       return "LogicalOr";
+    case OperatorId::Sqrt:
+      return "SQRT";
     default: {
       throw Exception{StringUtil::Format("Invalid operator ID: %u", op_id)};
     }

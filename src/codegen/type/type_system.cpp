@@ -282,15 +282,28 @@ const TypeSystem::Comparison *TypeSystem::GetComparison(
 
 const TypeSystem::UnaryOperator *TypeSystem::GetUnaryOperator(
     OperatorId op_id, const Type &input_type) {
+
+  if(input_type.type_id != peloton::type::TypeId::INVALID) {
+  } else {
+    std::cout << "input type is null\n";
+  }
+  std::cout << "type : " << TypeIdToString(input_type.type_id).c_str() << "\n";
+
+  //std::cout << "Operator_id " << OperatorIdToString(op_id) << "\n";
   const auto &type_system = input_type.GetTypeSystem();
+  std::cout << "After input_type.GetTypeSystem()\n";
+
   for (const auto &unary_op_info : type_system.unary_op_table_) {
     // Is this the operation we want? If not, keep looking ...
+    std::cout << "Entered \n";
     if (unary_op_info.op_id != op_id) {
       continue;
     }
 
+    std::cout << "Found the op_id\n";
     // Can we use the operation without any implicit casting?
     const auto &unary_operation = unary_op_info.unary_operation;
+    std::cout << "zz\n";
     if (unary_operation.SupportsType(input_type)) {
       return &unary_operation;
     }

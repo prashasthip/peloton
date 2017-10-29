@@ -25,12 +25,12 @@ FunctionTranslator::FunctionTranslator(
     const expression::FunctionExpression &func_expr,
     CompilationContext &context)
     : ExpressionTranslator(func_expr, context) {
-  /*if(!func_expr.isUDF()) {
+  if(!func_expr.isUDF()) {
     PL_ASSERT(func_expr.GetFunc().op_id != OperatorId::Invalid);
     PL_ASSERT(func_expr.GetFunc().impl != nullptr);
   } else {
     PL_ASSERT(func_expr.GetFuncContext() != nullptr);
-  } */
+  }
 
   // Prepare each of the child expressions
   for (uint32_t i = 0; i < func_expr.GetChildrenSize(); i++) {
@@ -47,21 +47,26 @@ codegen::Value FunctionTranslator::DeriveValue(CodeGen &codegen,
   // The function expression
   const auto &func_expr = GetExpressionAs<expression::FunctionExpression>();
 
+  std::cout << "After getting function_expr\n";
+
   // Collect the arguments to the function
   std::vector<codegen::Value> args;
   for (uint32_t i = 0; i < func_expr.GetChildrenSize(); i++) {
     args.push_back(row.DeriveValue(codegen, *func_expr.GetChild(i)));
   }
 
+  std::cout << "outside here\n";
+
   if(!func_expr.isUDF()) {
     auto operator_id = func_expr.GetFunc().op_id;
 
     if (args.size() == 1) {
       // Call unary operator
+      std::cout << "CallUnaryOp\n";
       return args[0].CallUnaryOp(codegen, operator_id);
     } else if (args.size() == 2) {
       // It's a binary function
-
+      std::cout << "BinaryOp\n";
       // Lookup the function
       type::Type left_type = args[0].GetType(), right_type = args[1].GetType();
       auto *binary_op = type::TypeSystem::GetBinaryOperator(

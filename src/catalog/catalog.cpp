@@ -889,6 +889,7 @@ const FunctionData Catalog::GetFunction(
                         " is internal, but doesn't have a function address");
     }
   } else if(lang_catalog_obj->GetName() == "plpgsql") {
+    std::cout << "Populated result inside catalog.cpp\n";
     // If the function is a "plpgsql" udf, perform the lookup in the plpgsql
     // functions map (i.e., function::PlpgsqlFunctions) to get the function
     // code_context
@@ -899,7 +900,7 @@ const FunctionData Catalog::GetFunction(
     if (result.func_context_->GetUDF() == nullptr) {
       txn_manager.AbortTransaction(txn);
       throw CatalogException("Function " + name +
-                        " is internal, but doesn't have a function address");
+                        " is plpgsql, but doesn't have a function address");
     }
   }
 
