@@ -49,9 +49,9 @@ class PelotonMM : public llvm::SectionMemoryManager {
   (RET_TYPE{(uint64_t)addr, llvm::JITSymbolFlags::Exported})
 #endif
   RET_TYPE findSymbol(const std::string &name) override {
-    LOG_TRACE("Looking up symbol '%s' ...", name.c_str());
+    LOG_DEBUG("Looking up symbol '%s' ...", name.c_str());
     if (auto *builtin = LookupSymbol(name)) {
-      LOG_TRACE("--> Resolved to builtin @ %p", builtin);
+      LOG_DEBUG("--> Resolved to builtin @ %p", builtin);
       return BUILD_RET_TYPE(builtin);
     }
 
@@ -160,17 +160,19 @@ void CodeContext::RegisterFunction(llvm::Function *func) {
 }
 
 void CodeContext::RegisterExternalFunction(
-    llvm::Function *func_decl, UNUSED_ATTRIBUTE llvm::Function *external,
-    CodeContext::FuncPtr func_impl) {
+    llvm::Function *func_decl, CodeContext::FuncPtr func_impl) {
   PL_ASSERT(func_decl->isDeclaration() &&
             "The first argument must be a function declaration");
-  PL_ASSERT(!external->isDeclaration() &&
+  /*PL_ASSERT(!external->isDeclaration() &&
             "The second argument must be a full LLVM function definition that "
             "exists in an external module");
   PL_ASSERT(func_decl->getName() == external->getName() &&
-            "The declaration and definition functions have different names!");
+            "The declaration and definition functions have different names!"); */
   PL_ASSERT(func_impl != nullptr && "The function pointer cannot be NULL");
   functions_.emplace_back(func_decl, func_impl);
+
+  // Register the builtin symbol by name
+  function_symbols_[func_decl->getName()] = func_impl;
 }
 
 void CodeContext::RegisterBuiltin(llvm::Function *func_decl,

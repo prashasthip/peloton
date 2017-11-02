@@ -55,8 +55,7 @@ class CodeContext {
   void RegisterFunction(llvm::Function *func);
 
   /// Register a function that is defined externally
-  void RegisterExternalFunction(llvm::Function *func_decl,
-                                llvm::Function *external, FuncPtr func_impl);
+  void RegisterExternalFunction(llvm::Function *func_decl, FuncPtr func_impl);
 
   /// Register a built-in C/C++ function
   void RegisterBuiltin(llvm::Function *func_decl, FuncPtr func_impl);
