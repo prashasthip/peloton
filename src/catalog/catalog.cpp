@@ -837,16 +837,21 @@ void Catalog::AddPlpgsqlFunction( const std::string &name,
     const std::string &func_src,
     peloton::codegen::CodeContext *code_context,
     concurrency::Transaction *txn) {
-  if (!ProcCatalog::GetInstance().InsertProc(name, return_type, argument_types,
-                                             prolang, func_src, pool_.get(),
-                                             txn)) {
-    throw CatalogException("Failed to add function " + name);
-  }
+
   auto proc_catalog_obj =
     ProcCatalog::GetInstance().GetProcByName(name, argument_types, txn);
 
-  function::PlpgsqlFunctions::AddFunction(proc_catalog_obj->GetOid(),
+  if(proc_catalog_obj == nullptr) {
+    if (!ProcCatalog::GetInstance().InsertProc(name, return_type, argument_types,
+                                             prolang, func_src, pool_.get(),
+                                             txn)) {
+    throw CatalogException("Failed to add function " + name);
+    }
+    proc_catalog_obj =
+    ProcCatalog::GetInstance().GetProcByName(name, argument_types, txn);
+    function::PlpgsqlFunctions::AddFunction(proc_catalog_obj->GetOid(),
     code_context);
+  }
 }
 
 const FunctionData Catalog::GetFunction(
