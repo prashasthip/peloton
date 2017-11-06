@@ -47,7 +47,6 @@ bool CreateFunctionExecutor::DExecute() {
   const planner::CreateFunctionPlan &node =
     GetPlanNode<planner::CreateFunctionPlan>();
   auto current_txn = context->GetTransaction();
-  // auto pool = context->GetPool();
   
   auto proname = node.GetFunctionName();
   oid_t prolang = catalog::LanguageCatalog::GetInstance().GetLanguageByName(
@@ -57,24 +56,26 @@ bool CreateFunctionExecutor::DExecute() {
   auto proargtypes = node.GetFunctionParameterTypes();
   auto proargnames = node.GetFunctionParameterNames();
   auto prosrc = node.GetFunctionBody()[0];
-  //auto isReplace = node.IsReplace(); // If replace, delete from the map, also see what's to be done on the JIT side
-  // For now only cater to create
+  //TODO(PP) : Check and handle Replace
+  //auto isReplace = node.IsReplace();
 
-  /* Pass it off to the UDF handler
-	Once you get the function pointer, put that an other details into the catalog */
-  
-  peloton::codegen::CodeContext& code_context =
-    peloton::udf::g_udf_handler.Execute(current_txn, proname, prosrc,
-                                        proargnames, proargtypes, prorettype);
-  std::cout << "LLVM fn ptr" << &code_context << "\n";
+  /* Pass it off to the UDF handler. Once the UDF is compiled,
+    put that along with the other UDF details into the catalog */
+  std::unique_ptr<peloton::udf::UDFHandler> udf_handler(
+    new peloton::udf::UDFHandler());
 
-  auto func_ptr = code_context.GetUDF();
+  peloton::codegen::CodeContext *code_context =
+    udf_handler->Execute(current_txn, proname, prosrc,
+      proargnames, proargtypes, prorettype);
+
+  // Get LLVM Function Pointer for the compiled UDF
+  auto func_ptr = code_context->GetUDF();
   if(func_ptr != nullptr) {
     try
     {
       // Insert into catalog
       catalog::Catalog::GetInstance()->AddPlpgsqlFunction(proname, proargtypes,
-        prorettype, prolang, prosrc, &code_context, current_txn);
+        prorettype, prolang, prosrc, code_context, current_txn);
       result = ResultType::SUCCESS;
     }
     catch (CatalogException e) {
@@ -88,10 +89,8 @@ bool CreateFunctionExecutor::DExecute() {
   current_txn->SetResult(result);
 
    if (current_txn->GetResult() == ResultType::SUCCESS) {
-      std::cout << "Registered UDF successfully!\n";
       LOG_TRACE("Registered UDF successfully!");
     } else if (current_txn->GetResult() == ResultType::FAILURE) {
-      std::cout << "Could not register function. SAD.\n";
       LOG_TRACE("Could not register function. SAD."); 
     } else {
       LOG_TRACE("Result is: %s",

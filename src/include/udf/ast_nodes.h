@@ -13,7 +13,7 @@
 namespace peloton {
 namespace udf {
 
-/// ExprAST - Base class for all expression nodes.
+// ExprAST - Base class for all expression nodes.
 class ExprAST {
  public:
   virtual ~ExprAST() = default;
@@ -22,7 +22,7 @@ class ExprAST {
       peloton::codegen::FunctionBuilder &fb) = 0;
 };
 
-/// NumberExprAST - Expression class for numeric literals like "1.0".
+// NumberExprAST - Expression class for numeric literals like "1.0".
 class NumberExprAST : public ExprAST {
   int val;
 
@@ -33,7 +33,7 @@ class NumberExprAST : public ExprAST {
     peloton::codegen::FunctionBuilder &fb) override;
 };
 
-/// VariableExprAST - Expression class for referencing a variable, like "a".
+// VariableExprAST - Expression class for referencing a variable, like "a".
 class VariableExprAST : public ExprAST {
   std::string name;
 
@@ -44,7 +44,7 @@ class VariableExprAST : public ExprAST {
     peloton::codegen::FunctionBuilder &fb) override;
 };
 
-/// BinaryExprAST - Expression class for a binary operator.
+// BinaryExprAST - Expression class for a binary operator.
 class BinaryExprAST : public ExprAST {
   char op;
   std::unique_ptr<ExprAST> lhs, rhs;
@@ -58,7 +58,7 @@ class BinaryExprAST : public ExprAST {
     peloton::codegen::FunctionBuilder &fb) override;
 };
 
-/// CallExprAST - Expression class for function calls.
+// CallExprAST - Expression class for function calls.
 class CallExprAST : public ExprAST {
   std::string callee;
   std::vector<std::unique_ptr<ExprAST>> args;
@@ -72,9 +72,8 @@ class CallExprAST : public ExprAST {
     peloton::codegen::FunctionBuilder &fb) override;
 };
 
-/// FunctionAST - This class represents a function definition itself.
+// FunctionAST - This class represents a function definition itself.
 class FunctionAST {
-  //std::unique_ptr<PrototypeAST> proto;
   std::unique_ptr<ExprAST> body;
 
  public:

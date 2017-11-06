@@ -837,7 +837,7 @@ void Catalog::AddPlpgsqlFunction( const std::string &name,
     const std::string &func_src,
     peloton::codegen::CodeContext *code_context,
     concurrency::Transaction *txn) {
-
+  //Check if UDF already exists
   auto proc_catalog_obj =
     ProcCatalog::GetInstance().GetProcByName(name, argument_types, txn);
 
@@ -849,6 +849,7 @@ void Catalog::AddPlpgsqlFunction( const std::string &name,
     }
     proc_catalog_obj =
     ProcCatalog::GetInstance().GetProcByName(name, argument_types, txn);
+    // Insert UDF into Catalog
     function::PlpgsqlFunctions::AddFunction(proc_catalog_obj->GetOid(),
     code_context);
   }
@@ -884,7 +885,6 @@ const FunctionData Catalog::GetFunction(
   result.func_name_ = proc_catalog_obj->GetSrc();
   result.return_type_ = proc_catalog_obj->GetRetType();
   if(lang_catalog_obj->GetName() == "internal") {
-    std::cout << "In internal\n";
     // If the function is "internal", perform the lookup in our built-in
     // functions map (i.e., function::BuiltInFunctions) to get the function
     result.func_ = function::BuiltInFunctions::GetFuncByName(result.func_name_);
@@ -895,8 +895,6 @@ const FunctionData Catalog::GetFunction(
                         " is internal, but doesn't have a function address");
     }
   } else if(lang_catalog_obj->GetName() == "plpgsql") {
-    std::cout << "In plpgsql\n";
-    std::cout << "Populated result inside catalog.cpp\n";
     // If the function is a "plpgsql" udf, perform the lookup in the plpgsql
     // functions map (i.e., function::PlpgsqlFunctions) to get the function
     // code_context

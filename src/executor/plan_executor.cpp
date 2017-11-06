@@ -54,7 +54,6 @@ void PlanExecutor::ExecutePlan(
 
   if (!settings::SettingsManager::GetBool(settings::SettingId::codegen)
       || !codegen::QueryCompiler::IsSupported(*plan)) {
-    std::cout << "I am not in codegen\n";
     bool status;
     std::unique_ptr<executor::AbstractExecutor> executor_tree(
         BuildExecutorTree(nullptr, plan.get(), executor_context.get()));
@@ -97,8 +96,6 @@ void PlanExecutor::ExecutePlan(
     return;
   }
 
-  std::cout <<"compiling and executing query\n";
-
   LOG_TRACE("Compiling and executing query ...");
   // Perform binding
   planner::BindingContext context;
@@ -109,16 +106,12 @@ void PlanExecutor::ExecutePlan(
   plan->GetOutputColumns(columns);
   codegen::BufferingConsumer consumer{columns, context};
 
-  std::cout << "Here ok\n";
-
   // Compile & execute the query
   codegen::QueryCompiler compiler;
   auto query = compiler.Compile(*plan, consumer);
-  std::cout << "query compiled\n";
   query->Execute(*txn, executor_context.get(),
                  reinterpret_cast<char *>(consumer.GetState()));
 
-  std::cout << " query executed\n";
   // Iterate over results
   const auto &results = consumer.GetOutputTuples();
   for (const auto &tuple : results) {

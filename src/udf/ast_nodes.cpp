@@ -1,5 +1,4 @@
 #include "udf/ast_nodes.h"
-#include <iostream>  // Remove later , for couts
 #include "codegen/type/type.h"
 #include "type/types.h"
 
@@ -10,7 +9,6 @@ namespace udf {
 peloton::codegen::Value NumberExprAST::Codegen(
     peloton::codegen::CodeGen &codegen,
     UNUSED_ATTRIBUTE peloton::codegen::FunctionBuilder &fb) {
-  std::cout << "NumberExprAST codegen\n";
   auto number_codegen_val = peloton::codegen::Value(
       peloton::codegen::type::Type(type::TypeId::DECIMAL, false),
       codegen.ConstDouble(val));
@@ -21,7 +19,6 @@ peloton::codegen::Value NumberExprAST::Codegen(
 peloton::codegen::Value VariableExprAST::Codegen(
     UNUSED_ATTRIBUTE peloton::codegen::CodeGen &codegen,
     peloton::codegen::FunctionBuilder &fb) {
-  std::cout << "VariabelExprAST codegen\n";
   llvm::Value *val = fb.GetArgumentByName(name);
 
   if (val) {
@@ -35,7 +32,6 @@ peloton::codegen::Value VariableExprAST::Codegen(
 peloton::codegen::Value BinaryExprAST::Codegen(
     peloton::codegen::CodeGen &codegen,
     peloton::codegen::FunctionBuilder &fb) {
-  std::cout << "Binary ExprAST codegen\n";
 
   peloton::codegen::Value left = lhs->Codegen(codegen, fb);
   peloton::codegen::Value right = rhs->Codegen(codegen, fb);
@@ -52,15 +48,6 @@ peloton::codegen::Value BinaryExprAST::Codegen(
       return left.Mul(codegen, right);
     case '/':
       return left.Div(codegen, right);
-    // TODO(PP): add < and > later on
-    /*case '>':
-      L = Builder.CreateFCmpUGT(L, R, "cmpGT");
-      // Convert bool 0/1 to double 0.0 or 1.0
-      return Builder.CreateUIToFP(L, Type::getDoubleTy(getGlobalContext()),
-    "boolGT"); case '<': L = Builder.CreateFCmpULT(L, R, "cmptmp");
-      // Convert bool 0/1 to double 0.0 or 1.0
-      return Builder.CreateUIToFP(L, Type::getDoubleTy(getGlobalContext()),
-                                  "boolLT"); */
     default:
       return LogErrorV("invalid binary operator");
   }
@@ -70,7 +57,6 @@ peloton::codegen::Value BinaryExprAST::Codegen(
 peloton::codegen::Value CallExprAST::Codegen(
     peloton::codegen::CodeGen &codegen,
     peloton::codegen::FunctionBuilder &fb) {
-  std::cout << "CallExprAST codegen\n";
 
   // Check if present in the current code context
   // Else, check the catalog and find it
@@ -105,7 +91,6 @@ peloton::codegen::Value CallExprAST::Codegen(
 llvm::Function *FunctionAST::Codegen(
     peloton::codegen::CodeGen &codegen,
     peloton::codegen::FunctionBuilder &fb) {
-  std::cout << "FunctionAST codegen\n";
 
   peloton::codegen::Value ret = body->Codegen(codegen, fb);
 
@@ -114,8 +99,8 @@ llvm::Function *FunctionAST::Codegen(
   return fb.GetFunction();
 }
 
-std::unique_ptr<ExprAST> LogError(const char *str) {
-  fprintf(stderr, "Error: %s\n", str);
+std::unique_ptr<ExprAST> LogError(UNUSED_ATTRIBUTE const char *str) {
+  LOG_TRACE("Error: %s\n", str);
   return 0;
 }
 

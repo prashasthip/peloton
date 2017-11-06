@@ -18,8 +18,6 @@
 #include "codegen/type/type_system.h"
 #include "codegen/type/sql_type.h"
 
-#include <iostream> //TODO(PP) : Remove
-
 namespace peloton {
 namespace codegen {
 
@@ -288,12 +286,9 @@ Value Value::BuildPHI(
 
 Value Value::CallUnaryOp(CodeGen &codegen, OperatorId op_id) const {
   auto *unary_op = type::TypeSystem::GetUnaryOperator(op_id, GetType());
-  std::cout << "Got the unary op\n";
   if (!IsNullable()) {
-    std::cout << "1\n";
     return unary_op->DoWork(codegen, *this);
   } else {
-    std::cout << "2\n";
     type::TypeSystem::UnaryOperatorWithNullPropagation null_aware_unary_op{
         *unary_op};
     return null_aware_unary_op.DoWork(codegen, *this);

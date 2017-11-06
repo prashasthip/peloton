@@ -3,10 +3,8 @@
 namespace peloton {
 namespace udf {
 
-using namespace std;
-
 UDFParser::UDFParser(UNUSED_ATTRIBUTE concurrency::Transaction *txn) {
-  // Install the binOp priorities
+  // Install the binary operator priorities
   binop_precedence_['<'] = 10;
   binop_precedence_['>'] = 10;
   binop_precedence_['+'] = 20;
@@ -15,70 +13,22 @@ UDFParser::UDFParser(UNUSED_ATTRIBUTE concurrency::Transaction *txn) {
   binop_precedence_['*'] = 40;  // highest.
 }
 
-codegen::CodeContext &UDFParser::Compile(std::string func_name,
-    std::string func_body,
-    std::vector<std::string> args_name,
-    std::vector<arg_type> args_type, arg_type ret_type) {
-
-  std::cout << "Inside compile\n";
-  std::cout << "Function body : " << func_body << "\n";
-
-  // To contain the context of the UDF
-  codegen::CodeContext *code_context = new codegen::CodeContext();
-  codegen::CodeGen cg{*code_context};
-
-  llvm::Type *llvm_ret_type = GetCodegenParamType(ret_type, cg);
-
-  // vector of pair of <argument name, argument type>
-  std::vector<std::pair<std::string, llvm::Type *>> llvm_args;
-
-  auto iterator_arg_name = args_name.begin();
-  auto iterator_arg_type = args_type.begin();
-
-  while(iterator_arg_name != args_name.end() &&
-        iterator_arg_type != args_type.end()) {
-    llvm_args.emplace_back(*iterator_arg_name,
-        GetCodegenParamType(*iterator_arg_type, cg));
-
-    ++iterator_arg_name;
-    ++iterator_arg_type;
-  }
-
-  std::cout << "num args: " << args_type.size() <<
-  " " << args_name.size() << "\n";
-
-  // Construct the Function Builder object
-  codegen::FunctionBuilder fb{*code_context, func_name,
-      llvm_ret_type, llvm_args};
+void UDFParser::ParseUDF(codegen::CodeGen &cg, codegen::FunctionBuilder &fb,
+    std::string func_body) {
 
   func_body_string_ = func_body;
   func_body_iterator_ = func_body_string_.begin();
   last_char_ = ' ';
-  std::cout << "Peeked" << PeekNext() << "\n";
+
   if (auto func = ParseDefinition()) {
     if (auto *func_ptr = func->Codegen(cg, fb)) {
+      auto &code_context = cg.GetCodeContext();
       // Required for referencing from Peloton code
-      code_context->SetUDF(func_ptr);
-      fprintf(stderr, "Read function definition");
+      code_context.SetUDF(func_ptr);
+
+      // To check correctness of the codegened UDF
       func_ptr->dump();
     }
-  }
-  return cg.GetCodeContext();
-}
-
-llvm::Type *UDFParser::GetCodegenParamType(arg_type type_val,
-    peloton::codegen::CodeGen &cg) {
-  // TODO(PP) : Add more types later
-  // For now I am assuming only doubles as parameters
-  if(type_val == type::TypeId::INTEGER) {
-    std::cout << "integer type\n";
-    return cg.Int32Type();
-  } else if(type_val == type::TypeId::DECIMAL) {
-    std::cout << "double type\n";
-    return cg.DoubleType();
-  } else {
-  //For now assume it to be a bool to keep compiler happy
-    return cg.BoolType();
   }
 }
 
@@ -113,14 +63,11 @@ int UDFParser::GetTokPrecedence() {
 }
 
 int UDFParser::GetTok() {
-  cout << "last_char_ " << last_char_ << "\n";
 
   // Skip any whitespace.
   while (isspace(last_char_)) {
     last_char_ = GetNextChar();
   }
-
-  cout << "1 last_char_ " << last_char_ << "\n";
 
   if (isalpha(last_char_)) {  // identifier: [a-zA-Z][a-zA-Z0-9]*
     identifier_str_ = last_char_;
@@ -142,7 +89,7 @@ int UDFParser::GetTok() {
   }
 
   /*
-  TODO @prashasp: Do better error-handling for digits
+  TODO(PP): Do better error-handling for digits
   */
   if (isdigit(last_char_) || last_char_ == '.') {  // Number: [0-9.]+
     std::string num_str;
@@ -251,7 +198,7 @@ std::unique_ptr<ExprAST> UDFParser::ParseIdentifierExpr() {
   // Enters in case nextChar is '(' so it is a function call
 
   GetNextToken();  // eat (
-  std::vector<unique_ptr<ExprAST>> args;
+  std::vector<std::unique_ptr<ExprAST>> args;
   if (cur_tok_ != ')') {
     while (true) {
       auto arg = ParseExpression();
@@ -262,7 +209,6 @@ std::unique_ptr<ExprAST> UDFParser::ParseIdentifierExpr() {
       }
 
       if (cur_tok_ == ')') {
-        std::cout << "exiting\n";
         break;
       }
 
@@ -293,22 +239,16 @@ std::unique_ptr<ExprAST> UDFParser::ParseReturn() {
 ///   ::= numberexpr
 ///   ::= parenexpr
 std::unique_ptr<ExprAST> UDFParser::ParsePrimary() {
-  std::cout << "Inside Parse Primary\n";
   switch (cur_tok_) {
     default:
-      std::cout << "Unknown tok " << cur_tok_ << "\n";
       return LogError("unknown token when expecting an expression");
     case tok_identifier:
-      std::cout << "Got a tok_identifier\n";
       return ParseIdentifierExpr();
     case tok_number:
-      std::cout << "Got a tok_number\n";
       return ParseNumberExpr();
     case '(':
-      std::cout << "Got a (\n";
       return ParseParenExpr();
     case tok_return:
-      std::cout << "Got a tok_return\n";
       return ParseReturn();
     case tok_semicolon:
       return nullptr;
@@ -331,7 +271,6 @@ std::unique_ptr<ExprAST> UDFParser::ParseBinOpRHS(
 
     // Okay, we know this is a binop.
     int bin_op = cur_tok_;
-    std::cout << "BINOP " << bin_op << "\n";
     GetNextToken();  // eat binop
 
     // Parse the primary expression after the binary operator.
@@ -360,7 +299,6 @@ std::unique_ptr<ExprAST> UDFParser::ParseBinOpRHS(
 ///   ::= primary binoprhs
 ///
 std::unique_ptr<ExprAST> UDFParser::ParseExpression() {
-  std::cout << "Inside ParseExpression\n";
   auto lhs = ParsePrimary();
   if (!lhs) {
     return nullptr;
@@ -372,13 +310,7 @@ std::unique_ptr<ExprAST> UDFParser::ParseExpression() {
 /// definition ::= 'def' prototype expression
 std::unique_ptr<FunctionAST> UDFParser::ParseDefinition() {
   GetNextToken();  // eat begin.
-  std::cout << cur_tok_ << "cur_tok_ after eating begin 1\n";
   GetNextToken();
-  std::cout << cur_tok_ << "cur_tok_ after eating begin 2\n";
-  std::cout << "inside Parsedef\n";
-  //auto proto = ParsePrototype();
-
-  //if (!proto) return nullptr;
 
   if (auto expr = ParseExpression()) {
     return llvm::make_unique<FunctionAST>(std::move(expr));

@@ -129,7 +129,6 @@ void OperatorToPlanTransformer::Visit(const PhysicalIndexScan *op) {
 }
 
 void OperatorToPlanTransformer::Visit(const PhysicalProject *) {
-  std::cout << "CAlled in OperatorToPlanTransformer::Visit(const PhysicalProject *)\n";
   auto cols_prop = requirements_->GetPropertyOfType(PropertyType::COLUMNS)
                        ->As<PropertyColumns>();
   size_t col_size = cols_prop->GetSize();
@@ -369,7 +368,6 @@ void OperatorToPlanTransformer::Visit(const PhysicalDelete *op) {
 }
 
 void OperatorToPlanTransformer::Visit(const PhysicalUpdate *op) {
-  std::cout << "Called in OperatorToPlanTransformer::Visit(const PhysicalUpdate *op)\n ";
   // TODO: Support index scan
   ExprMap table_expr_map;
   DirectMapList dml;
@@ -462,7 +460,6 @@ expression::AbstractExpression *
 OperatorToPlanTransformer::GeneratePredicateForScan(
     const PropertyPredicate *predicate_prop, const std::string &alias,
     const storage::DataTable *table) {
-  std::cout << "Called in OperatorToPlanTransformer::GeneratePredicateForScan\n";
   expression::AbstractExpression *predicate = nullptr;
   if (predicate_prop != nullptr) {
     ExprMap table_expr_map;
@@ -479,7 +476,6 @@ OperatorToPlanTransformer::GenerateAggregatePlan(
     const std::vector<std::shared_ptr<expression::AbstractExpression>> *
         group_by_exprs,
     expression::AbstractExpression *having) {
-  std::cout << "Called in OperatorToPlanTransformer::GenerateAggregatePlan\n";
   auto child_expr_map = children_expr_map_[0];
 
   vector<planner::AggregatePlan::AggTerm> agg_terms;
@@ -552,7 +548,6 @@ OperatorToPlanTransformer::GenerateAggregatePlan(
 unique_ptr<planner::AbstractPlan> OperatorToPlanTransformer::GenerateJoinPlan(
     expression::AbstractExpression *join_predicate, JoinType join_type,
     bool is_hash) {
-  std::cout << "Called in OperatorToPlanTransformer::GenerateJoinPlan()\n";
   auto cols_prop = requirements_->GetPropertyOfType(PropertyType::COLUMNS)
                        ->As<PropertyColumns>();
 

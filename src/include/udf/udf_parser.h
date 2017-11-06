@@ -18,16 +18,13 @@ class Transaction;
 
 namespace udf {
 
-using arg_type = type::TypeId;
-
 class UDFParser {
  public:
 
   UDFParser(UNUSED_ATTRIBUTE concurrency::Transaction* txn);
 
-  codegen::CodeContext& Compile(std::string func_name, std::string func_body,
-            std::vector<std::string> args_name, std::vector<arg_type> args_type,
-            arg_type ret_type);
+  void ParseUDF( codegen::CodeGen &cg, codegen::FunctionBuilder &fb,
+    std::string func_body);
 
  private:
   std::string identifier_str_;  // Filled in if tok_identifier
@@ -41,10 +38,6 @@ class UDFParser {
 
   enum token {
     tok_eof = -1,
-
-    // commands
-    tok_def = -2,     // Use till code is merged
-    tok_extern = -3,  // Not using
 
     // primary
     tok_identifier = -4,
@@ -73,12 +66,9 @@ class UDFParser {
   std::unique_ptr<ExprAST> ParseBinOpRHS(int ExprPrec,
                                          std::unique_ptr<ExprAST> LHS);
   std::unique_ptr<ExprAST> ParseExpression();
-  //std::unique_ptr<PrototypeAST> ParsePrototype();
   std::unique_ptr<FunctionAST> ParseDefinition();
   std::unique_ptr<ExprAST> ParsePrimary();
 
-  llvm::Type *GetCodegenParamType(arg_type type_val,
-    peloton::codegen::CodeGen &cg);
 };
 
 }  // namespace udf

@@ -18,8 +18,6 @@
 
 namespace peloton {
 
-using arg_type = type::TypeId;
-
 namespace expression {
 class FunctionExpression;
 }  // namespace expression
@@ -34,8 +32,6 @@ class FunctionTranslator : public ExpressionTranslator {
 
   codegen::Value DeriveValue(CodeGen &codegen,
                              RowBatch::Row &row) const override;
-  llvm::Type *GetCodegenParamType(arg_type type_val,
-    peloton::codegen::CodeGen &cg) const;
 };
 
 }  // namespace codegen

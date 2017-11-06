@@ -146,7 +146,6 @@ struct Negate : public TypeSystem::UnaryOperator {
   }
 
   Value DoWork(CodeGen &codegen, const Value &val) const override {
-    std::cout <<"Inside DoWork() of unary operator in decimal\n";
     PL_ASSERT(SupportsType(val.GetType()));
 
     llvm::Value *overflow_bit = nullptr;

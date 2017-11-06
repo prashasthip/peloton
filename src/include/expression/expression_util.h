@@ -485,7 +485,6 @@ class ExpressionUtil {
    */
   static void EvaluateExpression(const std::vector<ExprMap> &expr_maps,
                                  AbstractExpression *expr) {
-    std::cout << "Inside Evaluate Expression\n";
     // To evaluate the return type, we need a bottom up approach.
     if (expr == nullptr) return;
     size_t children_size = expr->GetChildrenSize();
