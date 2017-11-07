@@ -107,10 +107,17 @@ void PlanExecutor::ExecutePlan(
   codegen::BufferingConsumer consumer{columns, context};
 
   // Compile & execute the query
+  codegen::QueryCompiler::CompileStats cstats;
+  codegen::Query::RuntimeStats rstats;
   codegen::QueryCompiler compiler;
-  auto query = compiler.Compile(*plan, consumer);
+  auto query = compiler.Compile(*plan, consumer, &cstats);
   query->Execute(*txn, executor_context.get(),
-                 reinterpret_cast<char *>(consumer.GetState()));
+                 reinterpret_cast<char *>(consumer.GetState()), &rstats);
+
+  LOG_INFO("Setup: %.2lf ms, IR Gen: %.2lf ms, JIT: %.2lf ms", cstats.setup_ms,
+           cstats.ir_gen_ms, cstats.jit_ms);
+  LOG_INFO("Init: %.2lf ms, Plan: %.2lf ms, Cleanup: %.2lf ms", rstats.init_ms,
+           rstats.plan_ms, rstats.tear_down_ms);
 
   // Iterate over results
   const auto &results = consumer.GetOutputTuples();
