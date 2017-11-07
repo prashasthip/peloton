@@ -282,9 +282,7 @@ const TypeSystem::Comparison *TypeSystem::GetComparison(
 
 const TypeSystem::UnaryOperator *TypeSystem::GetUnaryOperator(
     OperatorId op_id, const Type &input_type) {
-
   const auto &type_system = input_type.GetTypeSystem();
-
   for (const auto &unary_op_info : type_system.unary_op_table_) {
     // Is this the operation we want? If not, keep looking ...
     if (unary_op_info.op_id != op_id) {

@@ -120,7 +120,6 @@ class CodeGen {
   llvm::Function *LookupBuiltin(const std::string &fn_name) const {
     return code_context_.LookupBuiltin(fn_name);
   }
-
   llvm::Function *RegisterBuiltin(const std::string &fn_name,
                                   llvm::FunctionType *fn_type, void *func_impl);
 

@@ -1056,17 +1056,12 @@ parser::SQLStatement* PostgresParser::CreateFunctionTransform(CreateFunctionStmt
   char* name = (reinterpret_cast<value*>(root->funcname->tail->data.ptr_value)
                     ->val.str);
   std::string func_name_string(name);
-  result->function_name = func_name_string; //We may have to change this to another function for handlign char * to string
+  result->function_name = func_name_string;
    
   // handle options
   for (auto cell = root->options->head; cell != NULL; cell = cell->next) {
     auto def_elem = reinterpret_cast<DefElem*>(cell->data.ptr_value);
     if (strcmp(def_elem->defname, "as") == 0) {
-
-      /*  DO NOT REMOVE **********
-      for (auto cell = def_elem->arg; cell != nullptr; cell = cell->next) {
-        result->function_body.push_back(cell->val.str);
-      } */
       auto list_of_arg = reinterpret_cast<List*>(def_elem->arg);
 
       for(auto cell2 = list_of_arg->head; cell2 != NULL; cell2 = cell2->next){
@@ -1561,7 +1556,6 @@ parser::UpdateStatement* PostgresParser::UpdateTransform(
 parser::SQLStatementList* PostgresParser::ParseSQLString(const char* text) {
   auto ctx = pg_query_parse_init();
   auto result = pg_query_parse(text);
-
   if (result.error) {
     // Parse Error
     std::string exception_msg = StringUtil::Format(

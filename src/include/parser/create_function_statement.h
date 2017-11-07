@@ -95,7 +95,6 @@ struct FuncParameter : Parameter {
   virtual ~FuncParameter() {}
 };
 
-// might want to change it to char* instead of string
 class CreateFunctionStatement : public SQLStatement {
  public:
   enum class ASclause { EXECUTABLE = 0, QUERY_STRING = 1 };

@@ -45,8 +45,8 @@ codegen::Value FunctionTranslator::DeriveValue(CodeGen &codegen,
 
   // Collect the arguments for the function
   std::vector<codegen::Value> args;
-    for (uint32_t i = 0; i < func_expr.GetChildrenSize(); i++) {
-      args.push_back(row.DeriveValue(codegen, *func_expr.GetChild(i)));
+  for (uint32_t i = 0; i < func_expr.GetChildrenSize(); i++) {
+    args.push_back(row.DeriveValue(codegen, *func_expr.GetChild(i)));
   }
 
   if(!func_expr.isUDF()) {

@@ -11,8 +11,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "planner/create_function_plan.h"
-
-//#include "parser/create_function_statement.h"
 #include "storage/data_table.h"
 
 namespace peloton {

@@ -49,9 +49,9 @@ class PelotonMM : public llvm::SectionMemoryManager {
   (RET_TYPE{(uint64_t)addr, llvm::JITSymbolFlags::Exported})
 #endif
   RET_TYPE findSymbol(const std::string &name) override {
-    LOG_DEBUG("Looking up symbol '%s' ...", name.c_str());
+    LOG_TRACE("Looking up symbol '%s' ...", name.c_str());
     if (auto *builtin = LookupSymbol(name)) {
-      LOG_DEBUG("--> Resolved to builtin @ %p", builtin);
+      LOG_TRACE("--> Resolved to builtin @ %p", builtin);
       return BUILD_RET_TYPE(builtin);
     }
 
