@@ -1039,6 +1039,9 @@ std::string PlanNodeTypeToString(PlanNodeType type) {
     case PlanNodeType::CREATE: {
       return ("CREATE");
     }
+    case PlanNodeType::CREATE_FUNC: {
+      return ("CREATE_FUNC");
+    }
     case PlanNodeType::SEND: {
       return ("SEND");
     }

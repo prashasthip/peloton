@@ -41,13 +41,33 @@ peloton::codegen::Value BinaryExprAST::Codegen(
 
   switch (op) {
     case '+':
+    {
       return left.Add(codegen, right);
+    }
     case '-':
+    {
       return left.Sub(codegen, right);
+    }
     case '*':
+    {
       return left.Mul(codegen, right);
+    }
     case '/':
+    {
       return left.Div(codegen, right);
+    }
+    case '<':
+    {
+      auto val = left.CompareLt(codegen, right);
+      codegen::type::Type valType(peloton::type::TypeId::DECIMAL, false);
+      return val.CastTo(codegen, valType);
+    }
+    case '>':
+    {
+      auto val = left.CompareGt(codegen, right);
+      codegen::type::Type valType(peloton::type::TypeId::DECIMAL, false);
+      return val.CastTo(codegen, valType);
+    }
     default:
       return LogErrorV("invalid binary operator");
   }
