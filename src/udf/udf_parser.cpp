@@ -14,8 +14,8 @@ UDFParser::UDFParser(UNUSED_ATTRIBUTE concurrency::Transaction *txn) {
 }
 
 void UDFParser::ParseUDF(codegen::CodeGen &cg, codegen::FunctionBuilder &fb,
-    std::string func_body) {
-
+    std::string func_body, std::string func_name) {
+  func_name_ = func_name;
   func_body_string_ = func_body;
   func_body_iterator_ = func_body_string_.begin();
   last_char_ = ' ';
@@ -79,10 +79,19 @@ int UDFParser::GetTok() {
     if (identifier_str_ == "BEGIN" || identifier_str_ == "begin") {
      return tok_begin;
     }
-    if (identifier_str_ == "END" || identifier_str_ == "end") {
+    else if(identifier_str_ == "IF" || identifier_str_ == "if") {
+      return tok_if;
+    }
+    else if(identifier_str_ == "THEN" || identifier_str_ == "then") {
+      return tok_then;
+    }
+    else if(identifier_str_ == "ELSE" || identifier_str_ == "else") {
+      return tok_else;
+    }
+    else if (identifier_str_ == "END" || identifier_str_ == "end") {
      return tok_end;
     }
-    if (identifier_str_ == "RETURN" || identifier_str_ == "return") {
+    else if (identifier_str_ == "RETURN" || identifier_str_ == "return") {
       return tok_return;
     }
     return tok_identifier;
@@ -229,7 +238,48 @@ std::unique_ptr<ExprAST> UDFParser::ParseIdentifierExpr() {
   return llvm::make_unique<CallExprAST>(id_name, std::move(args));
 }
 
+/// ifexpr ::= 'if' expression 'then' expression 'else' expression
+std::unique_ptr<ExprAST> UDFParser::ParseIfExpr() {
+  GetNextToken();  // eat the if.
+
+  std::cout << "parsing IF condition\n";
+  // condition.
+  auto if_cond = ParseExpression();
+  if (!if_cond)
+    return nullptr;
+
+  std::cout << "completed parsing IF condition\n";
+
+  std::cout << "parsing then condition\n";
+  if (cur_tok_ != tok_then)
+    return LogError("expected then");
+  GetNextToken();  // eat the then
+
+  auto then_stmt = ParseExpression();
+  if (!then_stmt)
+    return nullptr;
+
+  std::cout << "completed parsing then condition\n";
+
+  if (cur_tok_ != tok_else)
+    return LogError("expected else");
+
+  GetNextToken();
+
+  std::cout << "parsing else condition\n";
+  auto else_stmt = ParseExpression();
+  if (!else_stmt)
+    return nullptr;
+
+  std::cout << "completed parsing else condition\n";
+  std::cout << "parsed IF expr\n";
+
+  return llvm::make_unique<IfExprAST>(std::move(if_cond), std::move(then_stmt),
+                                      std::move(else_stmt));
+}
+
 std::unique_ptr<ExprAST> UDFParser::ParseReturn() {
+  std::cout << "Inside Parse return\n";
   GetNextToken();  // eat the return
   return ParsePrimary();
 }
@@ -250,6 +300,9 @@ std::unique_ptr<ExprAST> UDFParser::ParsePrimary() {
       return ParseParenExpr();
     case tok_return:
       return ParseReturn();
+    case tok_if:
+      std::cout << "Parsing IF\n";
+      return ParseIfExpr();
     case tok_semicolon:
       return nullptr;
   }
@@ -258,7 +311,8 @@ std::unique_ptr<ExprAST> UDFParser::ParsePrimary() {
 /// binoprhs
 ///   ::= ('+' primary)*
 std::unique_ptr<ExprAST> UDFParser::ParseBinOpRHS(
-    int expr_prec, std::unique_ptr<ExprAST> lhs) {
+  int expr_prec, std::unique_ptr<ExprAST> lhs) {
+  std::cout << "Inside ParseBin Ops\n";
   // If this is a binop, find its precedence.
   while (true) {
     int tok_prec = GetTokPrecedence();
@@ -266,7 +320,8 @@ std::unique_ptr<ExprAST> UDFParser::ParseBinOpRHS(
     // If this is a binop that binds at least as tightly as the current binop,
     // consume it, otherwise we are done.
     if (tok_prec < expr_prec) {
-     return lhs;
+      std::cout << "Exited here 1 in binops\n";
+      return lhs;
     }
 
     // Okay, we know this is a binop.
@@ -276,7 +331,8 @@ std::unique_ptr<ExprAST> UDFParser::ParseBinOpRHS(
     // Parse the primary expression after the binary operator.
     auto rhs = ParsePrimary();
     if (!rhs) {
-     return nullptr;
+      std::cout << "Exited here 2 in binops\n";
+      return nullptr;
     }
 
     // If BinOp binds less tightly with rhs than the operator after rhs, let
@@ -285,7 +341,8 @@ std::unique_ptr<ExprAST> UDFParser::ParseBinOpRHS(
     if (tok_prec < next_prec) {
       rhs = ParseBinOpRHS(tok_prec + 1, std::move(rhs));
       if (!rhs) {
-       return nullptr;
+        std::cout << "Exited here 3 in binops\n";
+        return nullptr;
       }
     }
 
@@ -299,15 +356,17 @@ std::unique_ptr<ExprAST> UDFParser::ParseBinOpRHS(
 ///   ::= primary binoprhs
 ///
 std::unique_ptr<ExprAST> UDFParser::ParseExpression() {
+  std::cout << "inside Parse expression\n";
   auto lhs = ParsePrimary();
   if (!lhs) {
     return nullptr;
   }
 
+  std::cout << "icomplated lhs part of Parse expression\n";
   return ParseBinOpRHS(0, std::move(lhs));
 }
 
-/// definition ::= 'def' prototype expression
+/// definition ::= function expression
 std::unique_ptr<FunctionAST> UDFParser::ParseDefinition() {
   GetNextToken();  // eat begin.
   GetNextToken();

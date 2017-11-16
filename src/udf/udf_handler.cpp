@@ -88,7 +88,7 @@ codegen::CodeContext *UDFHandler::Compile(
     new UDFParser(txn));
 
   // Parse UDF and generate the AST
-  parser->ParseUDF(cg, fb, func_body);
+  parser->ParseUDF(cg, fb, func_body, func_name);
 
   // Optimize and JIT compile all functions created in this context
   code_context->Compile();

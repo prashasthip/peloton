@@ -1,6 +1,8 @@
 #include "udf/ast_nodes.h"
 #include "codegen/type/type.h"
 #include "type/types.h"
+#include "codegen/lang/if.h"
+#include <iostream> ////TODO(PP) Remove
 
 namespace peloton {
 namespace udf {
@@ -79,7 +81,7 @@ peloton::codegen::Value CallExprAST::Codegen(
     peloton::codegen::FunctionBuilder &fb) {
 
   // Check if present in the current code context
-  // Else, check the catalog and find it
+  // Else, check the catalog and get it
   auto *callee_func = fb.GetFunction();
 
   // TODO(PP) : Later change this to also check in the catalog
@@ -105,6 +107,47 @@ peloton::codegen::Value CallExprAST::Codegen(
       peloton::codegen::type::Type(type::TypeId::DECIMAL, false), call_ret);
 
   return call_val;
+}
+
+peloton::codegen::Value IfExprAST::Codegen(
+    peloton::codegen::CodeGen &codegen,
+    peloton::codegen::FunctionBuilder &fb) {
+
+  auto compare_value = peloton::codegen::Value(
+      peloton::codegen::type::Type(type::TypeId::DECIMAL, false),
+      codegen.ConstDouble(1.0));
+
+  peloton::codegen::Value cond_expr_value = cond_expr->Codegen(codegen, fb);
+  peloton::codegen::Value if_result;
+  peloton::codegen::Value else_result;
+
+  // Codegen If condition expression
+  codegen::lang::If entry_cond{codegen,
+    cond_expr_value.CompareEq(codegen, compare_value), "entry_cond"};
+  {
+    //Codegen the then statements
+    if_result = then_stmt->Codegen(codegen, fb);
+  }
+  entry_cond.ElseBlock("multipleValue");
+  {
+    // codegen the else statements
+    else_result = else_stmt->Codegen(codegen, fb);
+  }
+  entry_cond.EndIf();
+
+  auto *val1 = if_result.GetValue();
+  auto *val2 = else_result.GetValue();
+
+  auto *final_result =
+      entry_cond.BuildPHI(val1, val2);
+
+  auto return_val = peloton::codegen::Value(
+      peloton::codegen::type::Type(type::TypeId::DECIMAL, false), final_result);
+
+  std::cout << "Completed codegening IF\n";
+
+  return return_val;
+
 }
 
 // Codegen for FunctionAST

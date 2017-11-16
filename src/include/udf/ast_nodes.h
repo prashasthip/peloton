@@ -72,6 +72,21 @@ class CallExprAST : public ExprAST {
     peloton::codegen::FunctionBuilder &fb) override;
 };
 
+/// IfExprAST - Expression class for if/then/else.
+class IfExprAST : public ExprAST {
+  std::unique_ptr<ExprAST> cond_expr, then_stmt, else_stmt;
+
+public:
+  IfExprAST(std::unique_ptr<ExprAST> cond_expr,
+    std::unique_ptr<ExprAST> then_stmt,
+    std::unique_ptr<ExprAST> else_stmt)
+      : cond_expr(std::move(cond_expr)), then_stmt(std::move(then_stmt)),
+      else_stmt(std::move(else_stmt)) {}
+
+  peloton::codegen::Value Codegen(peloton::codegen::CodeGen &codegen,
+      peloton::codegen::FunctionBuilder &fb) override;
+};
+
 // FunctionAST - This class represents a function definition itself.
 class FunctionAST {
   std::unique_ptr<ExprAST> body;

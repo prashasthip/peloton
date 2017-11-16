@@ -24,12 +24,13 @@ class UDFParser {
   UDFParser(UNUSED_ATTRIBUTE concurrency::Transaction* txn);
 
   void ParseUDF( codegen::CodeGen &cg, codegen::FunctionBuilder &fb,
-    std::string func_body);
+    std::string func_body, std::string func_name);
 
  private:
   std::string identifier_str_;  // Filled in if tok_identifier
   int num_val_;              // Filled in if tok_number
   std::string func_body_string_;
+  std::string func_name_;
   int cur_tok_;
   int last_char_;
 
@@ -48,7 +49,11 @@ class UDFParser {
     tok_begin = -7,
     tok_end = -8,
     tok_semicolon = -9,
-    tok_comma = -10
+    tok_comma = -10,
+
+    tok_if = -11,
+    tok_else = -12,
+    tok_then = -13
   };
 
   // Helper routines
@@ -68,6 +73,7 @@ class UDFParser {
   std::unique_ptr<ExprAST> ParseExpression();
   std::unique_ptr<FunctionAST> ParseDefinition();
   std::unique_ptr<ExprAST> ParsePrimary();
+  std::unique_ptr<ExprAST> ParseIfExpr();
 
 };
 
