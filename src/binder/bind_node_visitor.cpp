@@ -114,11 +114,14 @@ void BindNodeVisitor::Visit(parser::DeleteStatement *node) {
   context_ = nullptr;
 }
 
-void BindNodeVisitor::Visit(const parser::LimitDescription *) {}
-void BindNodeVisitor::Visit(const parser::CopyStatement *) {}
-void BindNodeVisitor::Visit(const parser::CreateStatement *) {}
-void BindNodeVisitor::Visit(const parser::CreateFunctionStatement *) {}
-void BindNodeVisitor::Visit(const parser::InsertStatement *node) {
+void BindNodeVisitor::Visit(parser::LimitDescription *) {}
+void BindNodeVisitor::Visit(parser::CopyStatement *) {}
+void BindNodeVisitor::Visit(parser::CreateFunctionStatement *) {}
+void BindNodeVisitor::Visit(parser::CreateStatement *node) {
+  node->TryBindDatabaseName(default_database_name_);
+}
+void BindNodeVisitor::Visit(parser::InsertStatement *node) {
+  node->TryBindDatabaseName(default_database_name_);
   if (node->select != nullptr) node->select->Accept(this);
   context_ = nullptr;
 }
@@ -205,8 +208,15 @@ void BindNodeVisitor::Visit(expression::FunctionExpression *expr) {
       catalog->GetFunction(expr->GetFuncName(), argtypes);
   LOG_DEBUG("Function %s found in the catalog", func_data.func_name_.c_str());
   LOG_DEBUG("Argument num: %ld", func_data.argument_types_.size());
-  expr->SetFunctionExpressionParameters(func_data.func_, func_data.return_type_,
-                                        func_data.argument_types_);
+  if(!func_data.isUDF_) {
+    expr->SetBuiltinFunctionExpressionParameters(func_data.func_,
+                                      func_data.return_type_,
+                                      func_data.argument_types_);
+  } else {
+    expr->SetUDFFunctionExpressionParameters(func_data.func_context_,
+                                      func_data.return_type_,
+                                      func_data.argument_types_);
+  }
 }
 
 }  // namespace binder
