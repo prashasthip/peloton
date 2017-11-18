@@ -9,9 +9,12 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/Support/raw_ostream.h"  // For errs()
+#include "type/type.h"
 
 namespace peloton {
 namespace udf {
+
+using arg_type = type::TypeId;
 
 // ExprAST - Base class for all expression nodes.
 class ExprAST {
@@ -62,11 +65,18 @@ class BinaryExprAST : public ExprAST {
 class CallExprAST : public ExprAST {
   std::string callee;
   std::vector<std::unique_ptr<ExprAST>> args;
+  std::string current_func;
+  std::vector<arg_type> args_type;
 
  public:
   CallExprAST(const std::string &callee,
-              std::vector<std::unique_ptr<ExprAST>> args)
-      : callee(callee), args(std::move(args)) {}
+              std::vector<std::unique_ptr<ExprAST>> args,
+              std::string &current_func,
+              std::vector<arg_type> args_type)
+      : callee(callee), args(std::move(args)) {
+        current_func = current_func;
+        args_type = args_type;
+      }
 
   peloton::codegen::Value Codegen(peloton::codegen::CodeGen &codegen,
     peloton::codegen::FunctionBuilder &fb) override;

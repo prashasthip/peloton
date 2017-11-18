@@ -14,9 +14,10 @@ UDFParser::UDFParser(UNUSED_ATTRIBUTE concurrency::Transaction *txn) {
 }
 
 void UDFParser::ParseUDF(codegen::CodeGen &cg, codegen::FunctionBuilder &fb,
-    std::string func_body, std::string func_name) {
+    std::string func_body, std::string func_name, std::vector<arg_type> args_type) {
   func_name_ = func_name;
   func_body_string_ = func_body;
+  args_type_ = args_type;
   func_body_iterator_ = func_body_string_.begin();
   last_char_ = ' ';
 
@@ -235,7 +236,7 @@ std::unique_ptr<ExprAST> UDFParser::ParseIdentifierExpr() {
     GetNextToken();
   }
 
-  return llvm::make_unique<CallExprAST>(id_name, std::move(args));
+  return llvm::make_unique<CallExprAST>(id_name, std::move(args), func_name_, args_type_);
 }
 
 /// ifexpr ::= 'if' expression 'then' expression 'else' expression
