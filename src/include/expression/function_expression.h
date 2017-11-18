@@ -30,7 +30,9 @@ class FunctionExpression : public AbstractExpression {
                      const std::vector<AbstractExpression *> &children)
       : AbstractExpression(ExpressionType::FUNCTION),
         func_name_(func_name),
-        func_(OperatorId::Invalid, nullptr) {
+        func_(OperatorId::Invalid, nullptr),
+        func_context_(nullptr),
+        isUDF_(false) {
     for (auto &child : children) {
       children_.push_back(std::unique_ptr<AbstractExpression>(child));
     }
@@ -42,17 +44,30 @@ class FunctionExpression : public AbstractExpression {
                      const std::vector<AbstractExpression *> &children)
       : AbstractExpression(ExpressionType::FUNCTION, return_type),
         func_(func_ptr),
-        func_arg_types_(arg_types) {
+        func_arg_types_(arg_types),
+        func_context_(nullptr),
+        isUDF_(false) {
     for (auto &child : children) {
       children_.push_back(std::unique_ptr<AbstractExpression>(child));
     }
     CheckChildrenTypes(children_, func_name_);
   }
 
-  void SetFunctionExpressionParameters(
+  void SetBuiltinFunctionExpressionParameters(
       function::BuiltInFuncType func_ptr, type::TypeId val_type,
       const std::vector<type::TypeId> &arg_types) {
+    isUDF_ = false;
     func_ = func_ptr;
+    return_value_type_ = val_type;
+    func_arg_types_ = arg_types;
+    CheckChildrenTypes(children_, func_name_);
+  }
+
+  void SetUDFFunctionExpressionParameters(
+      peloton::codegen::CodeContext *func_context, type::TypeId val_type,
+      const std::vector<type::TypeId> &arg_types) {
+    isUDF_ = true;
+    func_context_ = func_context;
     return_value_type_ = val_type;
     func_arg_types_ = arg_types;
     CheckChildrenTypes(children_, func_name_);
@@ -62,6 +77,7 @@ class FunctionExpression : public AbstractExpression {
       const AbstractTuple *tuple1, const AbstractTuple *tuple2,
       UNUSED_ATTRIBUTE executor::ExecutorContext *context) const override {
     std::vector<type::Value> child_values;
+
     PL_ASSERT(func_.impl != nullptr);
     for (auto &child : children_) {
       child_values.push_back(child->Evaluate(tuple1, tuple2, context));
@@ -87,6 +103,12 @@ class FunctionExpression : public AbstractExpression {
 
   const function::BuiltInFuncType &GetFunc() const { return func_; }
 
+  codegen::CodeContext *GetFuncContext() const {
+    return func_context_;
+  }
+
+  bool isUDF() const { return isUDF_; }
+
   const std::vector<type::TypeId> &GetArgTypes() const {
     return func_arg_types_;
   }
@@ -98,6 +120,10 @@ class FunctionExpression : public AbstractExpression {
 
   std::vector<type::TypeId> func_arg_types_;
 
+  codegen::CodeContext *func_context_;
+
+  bool isUDF_;
+
   void Accept(SqlNodeVisitor *v) override { v->Visit(this); }
 
  protected:
@@ -105,7 +131,9 @@ class FunctionExpression : public AbstractExpression {
       : AbstractExpression(other),
         func_name_(other.func_name_),
         func_(other.func_),
-        func_arg_types_(other.func_arg_types_) {}
+        func_arg_types_(other.func_arg_types_),
+        func_context_(other.func_context_),
+        isUDF_(other.isUDF_) {}
 
  private:
   // throws an exception if children return unexpected types
@@ -113,11 +141,11 @@ class FunctionExpression : public AbstractExpression {
       const std::vector<std::unique_ptr<AbstractExpression>> &children,
       const std::string &func_name) {
     if (func_arg_types_.size() != children.size()) {
-      throw Exception(EXCEPTION_TYPE_EXPRESSION,
-                      "Unexpected number of arguments to function: " +
-                          func_name + ". Expected: " +
-                          std::to_string(func_arg_types_.size()) + " Actual: " +
-                          std::to_string(children.size()));
+      throw Exception(
+          EXCEPTION_TYPE_EXPRESSION,
+          "Unexpected number of arguments to function: " + func_name +
+              ". Expected: " + std::to_string(func_arg_types_.size()) +
+              " Actual: " + std::to_string(children.size()));
     }
     // check that the types are correct
     for (size_t i = 0; i < func_arg_types_.size(); i++) {
