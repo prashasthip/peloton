@@ -466,7 +466,7 @@ void PostgresProtocolHandler::ExecParseMessage(InputPacket *pkt) {
   // Prepare statement
   std::shared_ptr<Statement> statement(nullptr);
 
-  LOG_DEBUG("PrepareStatement[%s] => %s", statement_name.c_str(),
+  LOG_INFO("PrepareStatement[%s] => %s", statement_name.c_str(),
             query_string.c_str());
   statement = traffic_cop_->PrepareStatement(statement_name, query_string,
                                              error_message);

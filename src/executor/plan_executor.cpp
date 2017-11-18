@@ -115,10 +115,12 @@ void PlanExecutor::ExecutePlan(
   query->Execute(*txn, executor_context.get(),
                  reinterpret_cast<char *>(consumer.GetState()), &rstats);
 
+  LOG_INFO("==================================================");
   LOG_INFO("Setup: %.2lf ms, IR Gen: %.2lf ms, JIT: %.2lf ms", cstats.setup_ms,
            cstats.ir_gen_ms, cstats.jit_ms);
   LOG_INFO("Init: %.2lf ms, Plan: %.2lf ms, Cleanup: %.2lf ms", rstats.init_ms,
            rstats.plan_ms, rstats.tear_down_ms);
+  LOG_INFO("==================================================");
 
   // Iterate over results
   const auto &results = consumer.GetOutputTuples();
