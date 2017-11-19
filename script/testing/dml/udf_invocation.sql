@@ -1,0 +1,1 @@
+select count(increment(a)) from UDF_TEST;
