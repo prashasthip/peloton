@@ -133,6 +133,17 @@ CodeContext::CodeContext()
   pass_manager_->add(llvm::createCFGSimplificationPass());
   pass_manager_->add(llvm::createAggressiveDCEPass());
   pass_manager_->add(llvm::createCFGSimplificationPass());
+  
+  // //pass_manager_->add(llvm::createBasicAliasAnalysisPass());
+  // pass_manager_->add(llvm::createBasicAAWrapperPass());
+  // pass_manager_->add(llvm::createInstructionCombiningPass());
+  // pass_manager_->add(llvm::createReassociatePass());
+  // pass_manager_->add(llvm::createGVNPass());
+  // pass_manager_->add(llvm::createCFGSimplificationPass());
+  // pass_manager_->add(llvm::createAggressiveDCEPass());
+  // pass_manager_->add(llvm::createCFGSimplificationPass());
+
+
 
   // Setup the common types we need once
   bool_type_ = llvm::Type::getInt1Ty(*context_);

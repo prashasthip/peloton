@@ -1,0 +1,62 @@
+Postgres results
+
+Number of Tuples : 1000
+---------
+Try 0:
+0.028293 seconds
+Try 1:
+0.021593 seconds
+Try 2:
+0.028959 seconds
+Try 3:
+0.021489 seconds
+Try 4:
+0.021451 seconds
+Explain analyze values
+
+
+Number of Tuples : 5000
+---------
+Try 0:
+0.024265 seconds
+Try 1:
+0.024955 seconds
+Try 2:
+0.029147 seconds
+Try 3:
+0.024960 seconds
+Try 4:
+0.025873 seconds
+Explain analyze values
+
+
+Number of Tuples : 25000
+---------
+Try 0:
+0.046064 seconds
+Try 1:
+0.050297 seconds
+Try 2:
+0.048088 seconds
+Try 3:
+0.056260 seconds
+Try 4:
+0.053131 seconds
+Explain analyze values
+
+
+Number of Tuples : 125000
+---------
+Try 0:
+0.159501 seconds
+Try 1:
+0.158805 seconds
+Try 2:
+0.157062 seconds
+Try 3:
+0.156819 seconds
+Try 4:
+0.153837 seconds
+Explain analyze values
+
+

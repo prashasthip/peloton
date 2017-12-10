@@ -1,0 +1,1 @@
+explain analyze select count(increment(a)) from A;

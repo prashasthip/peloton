@@ -35,14 +35,12 @@ class Test:
 		cmd = 'echo "\i %s" | psql sslmode=disable -U postgres -h localhost -p %s > %s 2>&1' % (self.run_script, self.port, "/tmp/invoke.txt")
 		exit_code = os.system(cmd)
 
-l_peloton = ["peloton_script1000.sql", "peloton_script5000.sql"]
+l_peloton = ["peloton_script1000.sql", "peloton_script5000.sql", "peloton_script25000.sql", "peloton_script125000.sql"]
 #l_peloton = ["peloton_script1000.sql", "peloton_script5000.sql", "peloton_script25000.sql", "peloton_script125000.sql", "peloton_script625000.sql"]
-l_postgres = ["postgres_script1000.sql", "postgres_script5000.sql", "postgres_script25000.sql", "postgres_script125000.sql", "postgres_script625000.sql"]
+#l_postgres = ["postgres_script1000.sql", "postgres_script5000.sql", "postgres_script25000.sql", "postgres_script125000.sql", "postgres_script625000.sql"]
 
 peloton_result = "peloton_result.txt"
-postgres_result = "postgres_result.txt"
 pelotonfile = open(peloton_result,"w") 
-postgresfile = open(postgres_result, "w")
 
 port = "15721"
 #run_script = "~/users/prashasp/peloton/script/testing/dml/udf_invocation.sql"
@@ -59,7 +57,7 @@ for i in range(0, len(l_peloton)):
 	# sleep for 5 seconds
 	time.sleep(5)
 	exit_code = p_test.setup_udf_test()
-	for j in range(0, 1):
+	for j in range(0, 5):
 		pelotonfile.write("Try %d:\n" % (j))
 		start = timer()
 		p_test.run_udf()

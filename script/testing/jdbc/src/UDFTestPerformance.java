@@ -170,7 +170,7 @@ public class UDFTestPerformance {
      */
     public static void main(String[] args) throws SQLException, Exception {
         ArrayList<Integer> num_tuples = new ArrayList<Integer>();
-        bool isPel = true;
+        boolean isPel = true;
         num_tuples.add(1);
         num_tuples.add(1000);
         // num_tuples.add(5000);

@@ -1,0 +1,58 @@
+Peloton results
+
+Number of Tuples : 1000
+---------
+Try 0:
+0.081086 seconds
+Try 1:
+0.052394 seconds
+Try 2:
+0.063652 seconds
+Try 3:
+0.047104 seconds
+Try 4:
+0.062138 seconds
+
+
+Number of Tuples : 5000
+---------
+Try 0:
+0.044355 seconds
+Try 1:
+0.078149 seconds
+Try 2:
+0.054203 seconds
+Try 3:
+0.055905 seconds
+Try 4:
+0.068584 seconds
+
+
+Number of Tuples : 2500
+---------
+Try 0:
+0.111902 seconds
+Try 1:
+0.079174 seconds
+Try 2:
+0.093772 seconds
+Try 3:
+0.087952 seconds
+Try 4:
+0.070431 seconds
+
+
+Number of Tuples : 1250
+---------
+Try 0:
+0.199105 seconds
+Try 1:
+0.253240 seconds
+Try 2:
+0.239193 seconds
+Try 3:
+0.226725 seconds
+Try 4:
+0.236056 seconds
+
+
